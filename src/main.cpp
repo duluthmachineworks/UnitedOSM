@@ -79,6 +79,7 @@ void setup() {
   setupNotecard();
   setupTemp();
   setupWiFi();
+  setupController();
 
   // Start time sync services
   setSyncProvider(getCurrentTimeFromNote);
@@ -297,11 +298,17 @@ void evaluateOutputState() {
   switch (power_state) {
   case on:
     digitalWrite(LED_BUILTIN, HIGH);
-    rover.setLoadState(1);
+    if (!load_state.active) {
+      rover.setLoadState(1);
+    }
+
+
     break;
   case off:
     digitalWrite(LED_BUILTIN, LOW);
-    rover.setLoadState(0);
+    if (load_state.active) {
+      rover.setLoadState(0);
+    }
     break;
 
   default:
@@ -341,19 +348,20 @@ void evaluateOutputState() {
 }
 
 // ---- Rover Functions ---- //
-void setupRover() {
+void setupController() {
   Serial2.begin(9600, SERIAL_8N1, RDX2, TXD2);
   rover.begin(Serial2);
 
 //Check to see if data can be pulled
   rover.getBatteryState(&battery_state);
   delay(500);
-  if (battery_state.batteryVoltage > 0 ) {
+  if (battery_state.batteryVoltage > 0) {
     Serial.println("RS232 connection to Rover initialized");
-  } else {
+  }
+  else {
     Serial.println("RS232 connection failed!!!");
   }
-  
+
 }
 
 void getCurrentControllerData() {
