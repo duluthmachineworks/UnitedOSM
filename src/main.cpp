@@ -136,7 +136,7 @@ void doNotecard() {
     // Controller Data
     J* req2 = notecard.newRequest("note.add");
     if (req2 != NULL) {
-      JAddStringToObject(req2, "file", "sensors.qo");
+      JAddStringToObject(req2, "file", "controller.qo");
       JAddBoolToObject(req2, "sync", true);
       J* body = JAddObjectToObject(req2, "body");
       if (body) {
