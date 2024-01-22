@@ -74,7 +74,7 @@ void printCurrentSettings();
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   Wire.begin();
-  Serial.begin(115200);
+  Serial.begin(9600);
 
   setupNotecard();
   setupTemp();
