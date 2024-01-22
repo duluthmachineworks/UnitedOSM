@@ -2,6 +2,7 @@
 #include <Notecard.h>
 #include <WiFi.h>
 #include <Wire.h>
+#include "RenogyRover.h"
 
 #include "SparkFun_STTS22H.h"
 #include "TimeLib.h"
