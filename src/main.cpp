@@ -22,13 +22,15 @@
 #define SEND_INTERVAL 15000
 bool send_time_updates = false;
 Notecard notecard;
+float notecard_temp;
 
 // Changeable Settings
-int logging_interval = 1; //in minutes
+int logging_interval = 1; // in minutes
 int outbound_interval = 5;
 int inbound_interval = 5;
 enum PowerStates { on, off };
 enum PowerModes { manual, timer };
+bool wifi_enabled = false;      // default state is off
 PowerStates power_state = on;   // default state is on
 PowerModes power_mode = manual; // default state is manual
 int time_on_hour;
@@ -38,7 +40,7 @@ int time_off_min;
 
 // Temp sensor
 SparkFun_STTS22H tempSensor;
-float temp;
+float ext_temp;
 
 // WiFi
 const char *ssid = "ESP32_Test";
@@ -99,12 +101,15 @@ void setup() {
 void loop() {
   // Poll sensors
   if (tempSensor.dataReady()) {
-    tempSensor.getTemperatureF(&temp);
+    tempSensor.getTemperatureF(&ext_temp);
   }
 
   // do actions
   doNotecard();
-  doWiFi();
+
+  if (wifi_enabled) {
+    doWiFi();
+  }
 
   // run output state machine
   evaluateOutputState();
@@ -177,8 +182,9 @@ void doNotecard() {
         }
         J *controller = JAddObjectToObject(body, "controller");
         if (controller) {
-          JAddNumberToObject(controller, "OSMTemperature", temp);
-          JAddNumberToObject(controller, "RoverTemperature", battery_state.controllerTemperature);
+          JAddNumberToObject(controller, "OSMTemperature", ext_temp);
+          JAddNumberToObject(controller, "RoverTemperature",
+                             battery_state.controllerTemperature);
         }
         J *load = JAddObjectToObject(body, "load");
         if (load) {
@@ -189,26 +195,43 @@ void doNotecard() {
         }
         J *statistics = JAddObjectToObject(body, "statistics");
         if (statistics) {
-          JAddNumberToObject(statistics, "OperatingDays", controller_statistics.operatingDays);
-          JAddNumberToObject(statistics, "OverDischarges", controller_statistics.batOverDischarges);
-          JAddNumberToObject(statistics, "FullCharges", controller_statistics.batFullCharges);
-          JAddNumberToObject(statistics, "ChargingAH", controller_statistics.batChargingAmpHours);
-          JAddNumberToObject(statistics, "DischargingAH", controller_statistics.batDischargingAmpHours);
-          JAddNumberToObject(statistics, "PowerGenerated", controller_statistics.powerGenerated);
-          JAddNumberToObject(statistics, "PowerConsumed", controller_statistics.powerConsumed);
+          JAddNumberToObject(statistics, "OperatingDays",
+                             controller_statistics.operatingDays);
+          JAddNumberToObject(statistics, "OverDischarges",
+                             controller_statistics.batOverDischarges);
+          JAddNumberToObject(statistics, "FullCharges",
+                             controller_statistics.batFullCharges);
+          JAddNumberToObject(statistics, "ChargingAH",
+                             controller_statistics.batChargingAmpHours);
+          JAddNumberToObject(statistics, "DischargingAH",
+                             controller_statistics.batDischargingAmpHours);
+          JAddNumberToObject(statistics, "PowerGenerated",
+                             controller_statistics.powerGenerated);
+          JAddNumberToObject(statistics, "PowerConsumed",
+                             controller_statistics.powerConsumed);
         }
         J *day = JAddObjectToObject(body, "dayStatistics");
         if (day) {
-          JAddNumberToObject(day, "BattVoltageMin", day_statistics.batteryVoltageMinForDay);
-          JAddNumberToObject(day, "BattVoltageMax", day_statistics.batteryVoltageMaxForDay);
-          JAddNumberToObject(day, "MaxChargeCurrent", day_statistics.maxChargeCurrentForDay);
-          JAddNumberToObject(day, "MaxChargePower", day_statistics.maxChargePowerForDay);
-          JAddNumberToObject(day, "MaxDischargeCurrent", day_statistics.maxDischargeCurrentForDay);
-          JAddNumberToObject(day, "MaxDischargePower", day_statistics.maxDischargePowerForDay);
-          JAddNumberToObject(day, "chargingAH_day", day_statistics.chargingAmpHoursForDay);
-          JAddNumberToObject(day, "DischargingAH_day", day_statistics.dischargingAmpHoursForDay);
-          JAddNumberToObject(day, "PowerGenerated_day", day_statistics.powerGenerationForDay);
-          JAddNumberToObject(day, "PowerConsumed_day", day_statistics.powerConsumptionForDay);
+          JAddNumberToObject(day, "BattVoltageMin",
+                             day_statistics.batteryVoltageMinForDay);
+          JAddNumberToObject(day, "BattVoltageMax",
+                             day_statistics.batteryVoltageMaxForDay);
+          JAddNumberToObject(day, "MaxChargeCurrent",
+                             day_statistics.maxChargeCurrentForDay);
+          JAddNumberToObject(day, "MaxChargePower",
+                             day_statistics.maxChargePowerForDay);
+          JAddNumberToObject(day, "MaxDischargeCurrent",
+                             day_statistics.maxDischargeCurrentForDay);
+          JAddNumberToObject(day, "MaxDischargePower",
+                             day_statistics.maxDischargePowerForDay);
+          JAddNumberToObject(day, "chargingAH_day",
+                             day_statistics.chargingAmpHoursForDay);
+          JAddNumberToObject(day, "DischargingAH_day",
+                             day_statistics.dischargingAmpHoursForDay);
+          JAddNumberToObject(day, "PowerGenerated_day",
+                             day_statistics.powerGenerationForDay);
+          JAddNumberToObject(day, "PowerConsumed_day",
+                             day_statistics.powerConsumptionForDay);
         }
       }
       notecard.sendRequest(req2);
@@ -226,6 +249,7 @@ void doNotecard() {
       // power_state[0] = '\0';
     } else {
       J *body = JGetObject(rsp, "body");
+      wifi_enabled = JGetBool(body, "WifiEnabled");
       strncpy(power_state_string, JGetString(body, "power_state"),
               sizeof(power_state_string));
       strncpy(power_mode_string, JGetString(body, "power_mode"),
@@ -330,7 +354,7 @@ void setupTemp() {
 
 void getTempData() {
   if (tempSensor.dataReady()) {
-    tempSensor.getTemperatureF(&temp);
+    tempSensor.getTemperatureF(&ext_temp);
   }
 }
 
@@ -481,7 +505,7 @@ void doWiFi() {
 
             // Display current state, and ON/OFF buttons for GPIO 26
             client.println("<p>Current Temp: ");
-            client.println(String(temp));
+            client.println(String(ext_temp));
             client.println(" Degrees F</p> <br>");
 
             client.println("<h3>Command States:</h3> <ul>");
