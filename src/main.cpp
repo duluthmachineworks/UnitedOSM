@@ -43,8 +43,8 @@ SparkFun_STTS22H tempSensor;
 float ext_temp;
 
 // WiFi
-const char *ssid = "ESP32_Test";
-const char *password = "United625";
+const char* ssid = "ESP32_Test";
+const char* password = "United625";
 WiFiServer server(80);
 String header;
 const long timeout_time = 2000;
@@ -101,7 +101,7 @@ void setup() {
 void loop() {
   // Poll sensors
   if (tempSensor.dataReady()) {
-    tempSensor.getTemperatureF(&ext_temp);
+    tempSensor.getTemperatureC(&ext_temp);
   }
 
   // do actions
@@ -124,7 +124,7 @@ void loop() {
 void setupNotecard() {
   notecard.begin();
   notecard.setDebugOutputStream(Serial);
-  J *req = notecard.newRequest("hub.set");
+  J* req = notecard.newRequest("hub.set");
   JAddStringToObject(req, "product", PRODUCT_UID);
   JAddStringToObject(req, "mode", "periodic");
   JAddNumberToObject(req, "outbound", outbound_interval);
@@ -157,103 +157,96 @@ void doNotecard() {
     */
 
     // Controller Data
-    J *req2 = notecard.newRequest("note.add");
+    J* req2 = notecard.newRequest("note.add");
     if (req2 != NULL) {
       JAddStringToObject(req2, "file", "controller.qo");
       //JAddBoolToObject(req2, "sync", true);
-      J *body = JAddObjectToObject(req2, "body");
+      J* body = JAddObjectToObject(req2, "body");
       if (body) {
-        J *battery = JAddObjectToObject(body, "battery");
+        J* battery = JAddObjectToObject(body, "battery");
         if (battery) {
-          JAddNumberToObject(battery, "StateOfCharge",
-                             battery_state.stateOfCharge);
-          JAddNumberToObject(battery, "BatteryVoltage",
-                             battery_state.batteryVoltage);
-          JAddNumberToObject(battery, "BatteryTemperature",
-                             battery_state.batteryTemperature);
-          JAddNumberToObject(battery, "ChargingCurrent",
-                             battery_state.chargingCurrent);
+          JAddNumberToObject(battery, "StateOfCharge", battery_state.stateOfCharge);
+          JAddNumberToObject(battery, "BatteryVoltage", roundf(battery_state.batteryVoltage * 10) / 10);
+          JAddNumberToObject(battery, "BatteryTemperature", battery_state.batteryTemperature);
+          JAddNumberToObject(battery, "ChargingCurrent", roundf(battery_state.chargingCurrent * 10) / 10);
         }
-        J *panel = JAddObjectToObject(body, "panel");
+        J* panel = JAddObjectToObject(body, "panel");
         if (panel) {
-          JAddNumberToObject(panel, "PanelVoltage", panel_state.voltage);
-          JAddNumberToObject(panel, "PanelCurrent", panel_state.current);
+          JAddNumberToObject(panel, "PanelVoltage", roundf(panel_state.voltage * 10) / 10);
+          JAddNumberToObject(panel, "PanelCurrent", roundf(panel_state.current * 10) / 10);
           JAddNumberToObject(panel, "PanelPower", panel_state.chargingPower);
         }
-        J *controller = JAddObjectToObject(body, "controller");
+        J* controller = JAddObjectToObject(body, "controller");
         if (controller) {
-          JAddNumberToObject(controller, "OSMTemperature", ext_temp);
-          JAddNumberToObject(controller, "RoverTemperature",
-                             battery_state.controllerTemperature);
+          JAddNumberToObject(controller, "OSMTemperature", roundf(ext_temp * 10) / 10);
+          JAddNumberToObject(controller, "RoverTemperature", battery_state.controllerTemperature);
         }
-        J *load = JAddObjectToObject(body, "load");
+        J* load = JAddObjectToObject(body, "load");
         if (load) {
           JAddBoolToObject(load, "LoadState", load_state.active);
-          JAddNumberToObject(load, "LoadVoltage", load_state.voltage);
-          JAddNumberToObject(load, "LoadCurrent", load_state.current);
+          JAddNumberToObject(load, "LoadVoltage", roundf(load_state.voltage * 10) / 10);
+          JAddNumberToObject(load, "LoadCurrent", roundf(load_state.current * 10) / 10);
           JAddNumberToObject(load, "LoadPower", load_state.power);
         }
-        J *statistics = JAddObjectToObject(body, "statistics");
+        J* statistics = JAddObjectToObject(body, "statistics");
         if (statistics) {
-          JAddNumberToObject(statistics, "OperatingDays",
-                             controller_statistics.operatingDays);
-          JAddNumberToObject(statistics, "OverDischarges",
-                             controller_statistics.batOverDischarges);
-          JAddNumberToObject(statistics, "FullCharges",
-                             controller_statistics.batFullCharges);
+          JAddNumberToObject(statistics, "OperatingDays", controller_statistics.operatingDays);
+          JAddNumberToObject(statistics, "OverDischarges", controller_statistics.batOverDischarges);
+          JAddNumberToObject(statistics, "FullCharges", controller_statistics.batFullCharges);
           JAddNumberToObject(statistics, "ChargingAH",
-                             controller_statistics.batChargingAmpHours);
+            controller_statistics.batChargingAmpHours);
           JAddNumberToObject(statistics, "DischargingAH",
-                             controller_statistics.batDischargingAmpHours);
+            controller_statistics.batDischargingAmpHours);
           JAddNumberToObject(statistics, "PowerGenerated",
-                             controller_statistics.powerGenerated);
+            controller_statistics.powerGenerated);
           JAddNumberToObject(statistics, "PowerConsumed",
-                             controller_statistics.powerConsumed);
+            controller_statistics.powerConsumed);
         }
-        J *day = JAddObjectToObject(body, "dayStatistics");
+        J* day = JAddObjectToObject(body, "dayStatistics");
         if (day) {
           JAddNumberToObject(day, "BattVoltageMin",
-                             day_statistics.batteryVoltageMinForDay);
+            day_statistics.batteryVoltageMinForDay);
           JAddNumberToObject(day, "BattVoltageMax",
-                             day_statistics.batteryVoltageMaxForDay);
+            day_statistics.batteryVoltageMaxForDay);
           JAddNumberToObject(day, "MaxChargeCurrent",
-                             day_statistics.maxChargeCurrentForDay);
+            day_statistics.maxChargeCurrentForDay);
           JAddNumberToObject(day, "MaxChargePower",
-                             day_statistics.maxChargePowerForDay);
+            day_statistics.maxChargePowerForDay);
           JAddNumberToObject(day, "MaxDischargeCurrent",
-                             day_statistics.maxDischargeCurrentForDay);
+            day_statistics.maxDischargeCurrentForDay);
           JAddNumberToObject(day, "MaxDischargePower",
-                             day_statistics.maxDischargePowerForDay);
+            day_statistics.maxDischargePowerForDay);
           JAddNumberToObject(day, "chargingAH_day",
-                             day_statistics.chargingAmpHoursForDay);
+            day_statistics.chargingAmpHoursForDay);
           JAddNumberToObject(day, "DischargingAH_day",
-                             day_statistics.dischargingAmpHoursForDay);
+            day_statistics.dischargingAmpHoursForDay);
           JAddNumberToObject(day, "PowerGenerated_day",
-                             day_statistics.powerGenerationForDay);
+            day_statistics.powerGenerationForDay);
           JAddNumberToObject(day, "PowerConsumed_day",
-                             day_statistics.powerConsumptionForDay);
+            day_statistics.powerConsumptionForDay);
         }
       }
       notecard.sendRequest(req2);
     }
 
     // receive data from notecard
-    J *req3 = notecard.newRequest("note.get");
+    J* req3 = notecard.newRequest("note.get");
     JAddStringToObject(req3, "file", "data.qi");
     JAddBoolToObject(req3, "delete", true);
 
-    J *rsp = notecard.requestAndResponse(req3);
+    J* rsp = notecard.requestAndResponse(req3);
     if (notecard.responseError(rsp)) {
       notecard.logDebug("No notes available");
       Serial.println("");
       // power_state[0] = '\0';
-    } else {
-      J *body = JGetObject(rsp, "body");
+    }
+    else {
+      J* body = JGetObject(rsp, "body");
       wifi_enabled = JGetBool(body, "WifiEnabled");
       strncpy(power_state_string, JGetString(body, "power_state"),
-              sizeof(power_state_string));
+        sizeof(power_state_string));
       strncpy(power_mode_string, JGetString(body, "power_mode"),
-              sizeof(power_mode_string));
+        sizeof(power_mode_string));
       time_on_hour = JGetNumber(body, "time_on_hour");
       time_on_min = JGetNumber(body, "time_on_min");
       time_off_hour = JGetNumber(body, "time_off_hour");
@@ -263,13 +256,15 @@ void doNotecard() {
 
       if (!strncmp(power_state_string, "on", sizeof("on"))) {
         power_state = on;
-      } else {
+      }
+      else {
         power_state = off;
       }
 
       if (!strncmp(power_mode_string, "timer", sizeof("timer"))) {
         power_mode = timer;
-      } else {
+      }
+      else {
         power_mode = manual;
       }
     }
@@ -291,12 +286,13 @@ time_t getCurrentTimeFromNote() {
 
   int gmt_offset = 0;
   // recieve data from notecard
-  J *req3 = notecard.newRequest("card.time");
+  J* req3 = notecard.newRequest("card.time");
 
-  J *rsp = notecard.requestAndResponse(req3);
+  J* rsp = notecard.requestAndResponse(req3);
   if (notecard.responseError(rsp)) {
     notecard.logDebug("No time available");
-  } else {
+  }
+  else {
     current_unix_time = JGetNumber(rsp, "time");
     gmt_offset = JGetNumber(rsp, "minutes");
     current_unix_time = current_unix_time + (gmt_offset * 60);
@@ -305,11 +301,11 @@ time_t getCurrentTimeFromNote() {
 
     if (send_time_updates) {
       // Send a note indicating the updated time
-      J *req = notecard.newRequest("note.add");
+      J* req = notecard.newRequest("note.add");
       if (req != NULL) {
         JAddStringToObject(req, "file", "time.qo");
         JAddBoolToObject(req, "sync", true);
-        J *body = JAddObjectToObject(req, "body");
+        J* body = JAddObjectToObject(req, "body");
         if (body) {
           JAddNumberToObject(body, "Updated Unix Time", current_unix_time);
         }
@@ -386,18 +382,23 @@ void evaluateOutputState() {
     if (hour() == time_on_hour) {
       if (minute() >= time_on_min) {
         power_state = on;
-      } else {
+      }
+      else {
         power_state = off;
       }
-    } else if (hour() == time_off_hour) {
+    }
+    else if (hour() == time_off_hour) {
       if (minute() >= time_off_min) {
         power_state = off;
-      } else {
+      }
+      else {
         power_state = on;
       }
-    } else if (hour() > time_on_hour && hour() < time_off_hour) {
+    }
+    else if (hour() > time_on_hour && hour() < time_off_hour) {
       power_state = on;
-    } else {
+    }
+    else {
       power_state = off;
     }
     break;
@@ -417,7 +418,8 @@ void setupController() {
   delay(500);
   if (battery_state.batteryVoltage > 0) {
     Serial.println("RS232 connection to Rover initialized");
-  } else {
+  }
+  else {
     Serial.println("RS232 connection failed!!!");
   }
 }
@@ -458,10 +460,10 @@ void doWiFi() {
     previous_time = current_time;
     Serial.println("New Client.");  // print a message out in the serial port
     String currentLine =
-        ""; // make a String to hold incoming data from the client
+      ""; // make a String to hold incoming data from the client
     while (client.connected() &&
-           current_time - previous_time <=
-               timeout_time) { // loop while the client's connected
+      current_time - previous_time <=
+      timeout_time) { // loop while the client's connected
       current_time = millis();
       if (client.available()) { // if there's bytes to read from the client,
         char c = client.read(); // read a byte, then
@@ -482,25 +484,25 @@ void doWiFi() {
             // Display the HTML web page
             client.println("<!DOCTYPE html><html>");
             client.println("<head><meta name=\"viewport\" "
-                           "content=\"width=device-width, "
-                           "initial-scale=1\">");
+              "content=\"width=device-width, "
+              "initial-scale=1\">");
             client.println("<link rel=\"icon\" href=\"data:,\">");
             // CSS to style the on/off buttons
             // Feel free to change the background-color and font-size
             // attributes to fit your preferences
             client.println("<style>html { font-family: Helvetica; display: "
-                           "inline-block; "
-                           "margin: 0px auto; text-align: center;}");
+              "inline-block; "
+              "margin: 0px auto; text-align: center;}");
             client.println(".button { background-color: #4CAF50; "
-                           "border: none; color: "
-                           "white; padding: 16px 40px;");
+              "border: none; color: "
+              "white; padding: 16px 40px;");
             client.println("text-decoration: none; font-size: "
-                           "30px; margin: 2px; cursor: "
-                           "pointer;}");
+              "30px; margin: 2px; cursor: "
+              "pointer;}");
             client.println(".button2 {background-color: "
-                           "#555555;}</style></head>");
+              "#555555;}</style></head>");
 
-            // Web Page Heading
+// Web Page Heading
             client.println("<body><h1>ESP32 Web Server</h1>");
 
             // Display current state, and ON/OFF buttons for GPIO 26
@@ -526,11 +528,13 @@ void doWiFi() {
             client.println();
             // Break out of the while loop
             break;
-          } else { // if you got a newline, then clear currentLine
+          }
+          else { // if you got a newline, then clear currentLine
             currentLine = "";
           }
-        } else if (c != '\r') { // if you got anything else but a carriage
-                                // return character,
+        }
+        else if (c != '\r') { // if you got anything else but a carriage
+                             // return character,
           currentLine += c;     // add it to the end of the currentLine
         }
       }
