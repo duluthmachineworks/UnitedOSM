@@ -18,12 +18,15 @@
 #define WDT_TIMEOUT 5 // in seconds
 
 // Notecard
-#define PRODUCTUID "com.unitedconsulting.clee:solarmonitor"
+#define PRODUCT_UID "com.unitedconsulting.clee:solarmonitor"
 #define SEND_INTERVAL 15000
 bool send_time_updates = false;
 Notecard notecard;
 
 // Changeable Settings
+int logging_interval = 1; //in minutes
+int outbound_interval = 5;
+int inbound_interval = 5;
 enum PowerStates { on, off };
 enum PowerModes { manual, timer };
 PowerStates power_state = on;   // default state is on
@@ -117,9 +120,10 @@ void setupNotecard() {
   notecard.begin();
   notecard.setDebugOutputStream(Serial);
   J *req = notecard.newRequest("hub.set");
-  JAddStringToObject(req, "product", "com.unitedconsulting.clee:solarmonitor");
-  JAddStringToObject(req, "mode", "continuous");
-  JAddBoolToObject(req, "sync", true);
+  JAddStringToObject(req, "product", PRODUCT_UID);
+  JAddStringToObject(req, "mode", "periodic");
+  JAddNumberToObject(req, "outbound", outbound_interval);
+  JAddNumberToObject(req, "inbound", inbound_interval);
   JAddStringToObject(req, "sn", "UC_unit_b");
   notecard.sendRequest(req);
 }
@@ -129,7 +133,7 @@ void doNotecard() {
   char power_state_string[4];
   char power_mode_string[10];
 
-  if (current_time > previous_data_time + SEND_INTERVAL) {
+  if (current_time > previous_data_time + (logging_interval * 60000)) {
     // Gather data from the controller to send
     getCurrentControllerData();
 
@@ -146,7 +150,7 @@ void doNotecard() {
       notecard.sendRequest(req);
     }
     */
-   
+
     // Controller Data
     J *req2 = notecard.newRequest("note.add");
     if (req2 != NULL) {
