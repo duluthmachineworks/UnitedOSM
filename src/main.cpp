@@ -135,7 +135,7 @@ void doNotecard() {
 
     // Send data to notecard
     // Sensor data
-    J *req = notecard.newRequest("note.add");
+    /*J *req = notecard.newRequest("note.add");
     if (req != NULL) {
       JAddStringToObject(req, "file", "sensors.qo");
       JAddBoolToObject(req, "sync", true);
@@ -145,6 +145,8 @@ void doNotecard() {
       }
       notecard.sendRequest(req);
     }
+    */
+   
     // Controller Data
     J *req2 = notecard.newRequest("note.add");
     if (req2 != NULL) {
@@ -171,8 +173,8 @@ void doNotecard() {
         }
         J *controller = JAddObjectToObject(body, "controller");
         if (controller) {
-          JAddNumberToObject(controller, "ControllerTemperature",
-                             battery_state.controllerTemperature);
+          JAddNumberToObject(controller, "OSMTemperature", temp);
+          JAddNumberToObject(controller, "RoverTemperature", battery_state.controllerTemperature);
         }
         J *load = JAddObjectToObject(body, "load");
         if (load) {
