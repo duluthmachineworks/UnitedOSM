@@ -426,6 +426,7 @@ void getCurrentControllerData() {
   rover.getControllerLoadState(&load_state);
   rover.getHistoricalStatistics(&controller_statistics);
   rover.getDayStatistics(&day_statistics);
+  Serial.print("Controller data updated");
 }
 
 // ---- WiFi Functions ---- //
