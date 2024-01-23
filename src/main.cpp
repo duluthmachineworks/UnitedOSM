@@ -3,6 +3,7 @@
 #include <Notecard.h>
 #include <WiFi.h>
 #include <Wire.h>
+#include <esp_task_wdt.h>
 
 #include "RenogyRover.h"
 #include "SparkFun_STTS22H.h"
@@ -12,6 +13,9 @@
 #define LED_PIN 13;
 #define RDX2 16
 #define TXD2 17
+
+// Hardware watchdog timeout
+#define WDT_TIMEOUT 5 //in seconds
 
 // Notecard
 #define PRODUCTUID "com.unitedconsulting.clee:solarmonitor"
@@ -82,6 +86,10 @@ void setup() {
 
   // Start time sync services
   setSyncProvider(getCurrentTimeFromNote);
+
+  //Set up hardware watchdog timer
+  esp_task_wdt_init(WDT_TIMEOUT, true);
+  esp_task_wdt_add(NULL);
 }
 
 void loop() {
@@ -96,6 +104,9 @@ void loop() {
 
   // run output state machine
   evaluateOutputState();
+
+  //reset watchdog timer
+  esp_task_wdt_reset();
 }
 
 /******** Function Definitions ********/
