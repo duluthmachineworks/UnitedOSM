@@ -19,17 +19,16 @@
 bool send_time_updates = false;
 Notecard notecard;
 
-// Changable Settings
+// Changeable Settings
 
 enum PowerStates { on, off };
 enum PowerModes { manual, timer };
-PowerStates power_state = off;
-PowerModes power_mode = manual;
+PowerStates power_state = on; // default state is on
+PowerModes power_mode = manual; //default state is manual
 int time_on_hour;
 int time_on_min;
 int time_off_hour;
 int time_off_min;
-int days_active[8];
 
 // Temp sensor
 SparkFun_STTS22H tempSensor;
@@ -74,7 +73,7 @@ void printCurrentSettings();
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   Wire.begin();
-  Serial.begin(9600);
+  //Serial.begin(9600);
 
   setupNotecard();
   setupTemp();
@@ -109,6 +108,7 @@ void setupNotecard() {
   JAddStringToObject(req, "product", "com.unitedconsulting.clee:solarmonitor");
   JAddStringToObject(req, "mode", "continuous");
   JAddBoolToObject(req, "sync", true);
+  JAddStringToObject(req, "sn", "UC_unit_b");
   notecard.sendRequest(req);
 }
 
@@ -176,7 +176,7 @@ void doNotecard() {
     J* rsp = notecard.requestAndResponse(req3);
     if (notecard.responseError(rsp)) {
       notecard.logDebug("No notes available");
-      Serial.println("");
+      //Serial.println("");
       // power_state[0] = '\0';
     }
     else {
@@ -189,7 +189,7 @@ void doNotecard() {
       time_on_min = JGetNumber(body, "time_on_min");
       time_off_hour = JGetNumber(body, "time_off_hour");
       time_off_min = JGetNumber(body, "time_off_min");
-      Serial.println("Settings updated. Current settings: ");
+      //Serial.println("Settings updated. Current settings: ");
       printCurrentSettings();
 
       if (!strncmp(power_state_string, "on", sizeof("on"))) {
@@ -213,7 +213,7 @@ void doNotecard() {
     getCurrentTimeFromNote();
 
     // Finish the function
-    Serial.println("Sensor data transmitted");
+    //Serial.println("Sensor data transmitted");
     previous_data_time = current_time;
   }
 }
@@ -251,10 +251,10 @@ time_t getCurrentTimeFromNote() {
       }
     }
 
-    Serial.print("Current time updated: ");
-    Serial.print(hour());
-    Serial.print(":");
-    Serial.println(minute());
+    //Serial.print("Current time updated: ");
+    //Serial.print(hour());
+    //Serial.print(":");
+    //Serial.println(minute());
   }
 
   notecard.deleteResponse(rsp);
@@ -264,12 +264,12 @@ time_t getCurrentTimeFromNote() {
 // ---- Temp Sensor ---- //
 void setupTemp() {
   if (!tempSensor.begin()) {
-    Serial.println("Temp sensor did not begin.");
+    //Serial.println("Temp sensor did not begin.");
     while (1)
       ;
   }
 
-  Serial.println("Temp sensor ready.");
+  //Serial.println("Temp sensor ready.");
 
   // Other output data rates can be found in the description
   // above. To change the ODR or mode, the device must first be
@@ -356,10 +356,10 @@ void setupController() {
   rover.getBatteryState(&battery_state);
   delay(500);
   if (battery_state.batteryVoltage > 0) {
-    Serial.println("RS232 connection to Rover initialized");
+    //Serial.println("RS232 connection to Rover initialized");
   }
   else {
-    Serial.println("RS232 connection failed!!!");
+    //Serial.println("RS232 connection failed!!!");
   }
 
 }
@@ -373,16 +373,16 @@ void getCurrentControllerData() {
 // ---- WiFi Functions ---- //
 void setupWiFi() {
   // Connect to Wi-Fi network with SSID and password
-  Serial.println("Setting AP (Access Point)…");
+  //Serial.println("Setting AP (Access Point)…");
   // Remove the password parameter, if you want the AP (Access Point) to be
   // open
   WiFi.softAP(ssid, password);
 
   IPAddress IP = WiFi.softAPIP();
-  Serial.print("SSID: ");
-  Serial.println(ssid);
-  Serial.print(" AP IP address: ");
-  Serial.println(IP);
+  //Serial.print("SSID: ");
+  //Serial.println(ssid);
+  //Serial.print(" AP IP address: ");
+  //Serial.println(IP);
 
   server.begin();
 }
@@ -391,9 +391,12 @@ void doWiFi() {
   WiFiClient client = server.available();  // Listen for incoming clients
 
   if (client) {  // If a new client connects,
+
+    getCurrentControllerData();
+
     current_time = millis();
     previous_time = current_time;
-    Serial.println("New Client.");  // print a message out in the serial port
+    //Serial.println("New Client.");  // print a message out in the serial port
     String currentLine =
       "";  // make a String to hold incoming data from the client
     while (client.connected() &&
@@ -457,6 +460,11 @@ void doWiFi() {
             client.println(power_mode);
             client.println("</li></ul>");
 
+            client.println("<h3>Controller</h3> <ul>");
+            client.println("<li> Battery Voltage: ");
+            client.println(battery_state.batteryVoltage);
+            client.println("</li></ul>");
+
             client.println("</body></html>");
 
             // The HTTP response ends with another blank line
@@ -478,13 +486,13 @@ void doWiFi() {
     header = "";
     // Close the connection
     client.stop();
-    Serial.println("Client disconnected.");
-    Serial.println("");
+    //Serial.println("Client disconnected.");
+    //Serial.println("");
   }
 }
 
 void printCurrentSettings() {
-  Serial.print("Power State: ");
+  /*Serial.print("Power State: ");
   Serial.println(power_state);
   Serial.print("Power Mode: ");
   Serial.println(power_mode);
@@ -495,5 +503,5 @@ void printCurrentSettings() {
   Serial.print("Time off: ");
   Serial.print(time_off_hour);
   Serial.print(":");
-  Serial.println(time_off_min);
+  Serial.println(time_off_min);*/
 }
