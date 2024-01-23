@@ -193,14 +193,10 @@ void doNotecard() {
           JAddNumberToObject(statistics, "OperatingDays", controller_statistics.operatingDays);
           JAddNumberToObject(statistics, "OverDischarges", controller_statistics.batOverDischarges);
           JAddNumberToObject(statistics, "FullCharges", controller_statistics.batFullCharges);
-          JAddNumberToObject(statistics, "ChargingAH",
-            controller_statistics.batChargingAmpHours);
-          JAddNumberToObject(statistics, "DischargingAH",
-            controller_statistics.batDischargingAmpHours);
-          JAddNumberToObject(statistics, "PowerGenerated",
-            controller_statistics.powerGenerated);
-          JAddNumberToObject(statistics, "PowerConsumed",
-            controller_statistics.powerConsumed);
+          JAddNumberToObject(statistics, "ChargingAH", controller_statistics.batChargingAmpHours);
+          JAddNumberToObject(statistics, "DischargingAH", controller_statistics.batDischargingAmpHours);
+          JAddNumberToObject(statistics, "PowerGenerated", roundf(controller_statistics.powerGenerated * 10) / 10);
+          JAddNumberToObject(statistics, "PowerConsumed", roundf(controller_statistics.powerConsumed * 10) / 10);
         }
         J* day = JAddObjectToObject(body, "dayStatistics");
         if (day) {
