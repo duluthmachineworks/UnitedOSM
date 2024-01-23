@@ -20,7 +20,7 @@
 
     {"key": "LoadCurrent", "value": $round(body.load.LoadCurrent, 2)},
     {"key": "LoadPower", "value": body.load.LoadPower},
-    {"key": "LoadState", "value": body.load.LoadState},
+    {"key": "LoadState", "value": body.load.LoadState ? "Load On" : "Load Off"},
     {"key": "LoadVoltage", "value": $round(body.load.LoadVoltage, 2)},
 
     {"key": "PanelCurrent", "value": $round(body.panel.PanelCurrent, 2)},
