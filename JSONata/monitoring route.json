@@ -1,0 +1,42 @@
+[
+    {"key": "BatteryTemperature", "value": body.battery.BatteryTemperature},
+    {"key": "BatteryVoltage", "value": body.battery.BatteryVoltage},
+    {"key": "ChargingCurrent", "value": body.battery.ChargingCurrent},
+    {"key": "StateOfCharge", "value": body.battery.StateOfCharge},
+
+    {"key": "OSMTemperature", "value": body.controller.OSMTemperature},
+    {"key": "RoverTemperature", "value": body.controller.RoverTemperature},
+
+    {"key": "BattVoltageMax", "value": body.dayStatistics.BattVoltageMax},
+    {"key": "BattVoltageMin", "value": body.dayStatistics.BattVoltageMin},
+    {"key": "DischargingAH_day", "value": body.dayStatistics.DischargingAH_day},
+    {"key": "MaxChargeCurrent", "value": body.dayStatistics.MaxChargeCurrent},
+    {"key": "MaxChargePower", "value": body.dayStatistics.MaxChargePower},
+    {"key": "MaxDischargeCurrent", "value": body.dayStatistics.MaxDischargeCurrent},
+    {"key": "MaxDischargePower", "value": body.dayStatistics.MaxDischargePower},
+    {"key": "PowerConsumed_day", "value": body.dayStatistics.PowerConsumed_day},
+    {"key": "PowerGenerated_day", "value": body.dayStatistics.PowerGenerated_day},
+    {"key": "chargingAH_day", "value": body.dayStatistics.chargingAH_day},
+
+    {"key": "LoadCurrent", "value": body.load.LoadCurrent},
+    {"key": "LoadPower", "value": body.load.LoadPower},
+    {"key": "LoadState", "value": body.load.LoadState},
+    {"key": "LoadVoltage", "value": body.load.LoadVoltage},
+
+    {"key": "PanelCurrent", "value": body.panel.PanelCurrent},
+    {"key": "PanelPower", "value": body.panel.PanelPower},
+    {"key": "PanelVoltage", "value": body.panel.PanelVoltage},
+
+    {"key": "ChargingAH", "value": body.statistics.ChargingAH},
+    {"key": "DischargingAH", "value": body.statistics.DischargingAH},
+    {"key": "FullCharges", "value": body.statistics.FullCharges},
+    {"key": "OperatingDays", "value": body.statistics.OperatingDays},
+    {"key": "OverDischarges", "value": body.statistics.OverDischarges},
+    {"key": "PowerConsumed", "value": body.statistics.PowerConsumed},
+    {"key": "PowerGenerated", "value": body.statistics.PowerGenerated},
+
+    {"key": "Latitude", "value": "best_lat"},
+    {"key": "Longitude", "value": "best_long"}
+    
+   
+ ]
