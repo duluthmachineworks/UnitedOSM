@@ -33,10 +33,10 @@ enum PowerModes { manual, timer };
 bool wifi_enabled = false;      // default state is off
 PowerStates power_state = on;   // default state is on
 PowerModes power_mode = manual; // default state is manual
-int time_on_hour;
-int time_on_min;
-int time_off_hour;
-int time_off_min;
+int time_on_hour = 7;
+int time_on_min = 0;
+int time_off_hour = 18;
+int time_off_min = 0;
 
 // Temp sensor
 SparkFun_STTS22H tempSensor;
