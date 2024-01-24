@@ -27,22 +27,22 @@ To simplify construction, an "active cable" containing the RS232 tranciever was 
 
 ### Cable pinout
 - **RJ-12 Connector**
-    1. TX - Blue
-    2. RX - White/Blue
-    3. Power/Signal GND - Brown
-    4. Power/Signal GND - White/Brown
-    5. +12V - Orange
-    6. +12V - White/Orange
-    7. Not used - Green
-    8. Not used - White/green 
+1. TX - Blue
+2. RX - White/Blue
+3. Power/Signal GND - Brown
+4. Power/Signal GND - White/Brown
+5. +12V - Orange
+6. +12V - White/Orange
+7. Not used - Green
+8. Not used - White/green 
 - **RJ-45 Connector**
-    1. TX - Blue
-    2. RX - White/Blue
-    3. Power GND - Brown
-    4. Signal GND - White/Brown
-    5. +12V - Orange
-    6. +12V - White/Orange
-    7. VCC (3.3v) - Green
-    8. Not used - White/Green
+1. TX - Blue
+2. RX - White/Blue
+3. Power GND - Brown
+4. Signal GND - White/Brown
+5. +12V - Orange
+6. +12V - White/Orange
+7. VCC (3.3v) - Green
+8. Not used - White/Green
 
     ***Note: Signal GND (White/brown) is terminated at the RS232 transciever, this cannot be used for any other purposes.***
