@@ -26,9 +26,9 @@ Notecard notecard;
 float notecard_temp;
 
 // Changeable Settings
-int logging_interval = 1; // in minutes
-int outbound_interval = 5;
-int inbound_interval = 5;
+int logging_interval = 5; // in minutes
+int outbound_interval = 10;
+int inbound_interval = 10;
 bool power_on = true;
 bool timer_mode = false;
 bool wifi_enabled = false;      // default state is off
@@ -95,7 +95,7 @@ void setup() {
     Serial.print(". ");
     delay(1000); //allow the notecard to get started
   }
-  
+
   // Start time sync services
   setSyncProvider(getCurrentTimeFromNote);
 
@@ -127,6 +127,9 @@ void loop() {
 
   // reset watchdog timer
   esp_task_wdt_reset();
+
+  //handle alarm scheduling
+  Alarm.delay(0);
 }
 
 /******** Function Definitions ********/
@@ -138,13 +141,17 @@ void setupTimer() {
   Alarm.free(off_timer);
 
   //write new times
-  on_timer = Alarm.alarmRepeat(time_on_hour,time_on_min,0, powerOn);
-  off_timer = Alarm.alarmRepeat(time_off_hour,time_off_min,0, powerOff);
+  on_timer = Alarm.alarmRepeat(time_on_hour, time_on_min, 0, powerOn);
+  off_timer = Alarm.alarmRepeat(time_off_hour, time_off_min, 0, powerOff);
 
   Serial.print("Timer set to turn on at ");
-  Serial.print(Alarm.read(on_timer));
+  Serial.print(hour(Alarm.read(on_timer)));
+  Serial.print(":");
+  Serial.print(minute(Alarm.read(on_timer)));
   Serial.print(", off at ");
-  Serial.println(Alarm.read(off_timer));
+  Serial.print(hour(Alarm.read(off_timer)));
+  Serial.print(":");
+  Serial.println(minute(Alarm.read(off_timer)));
 }
 
 //Deletes all timer objects
@@ -260,9 +267,9 @@ void doNotecard() {
       notecard.sendRequest(req2);
     }
 
-    // receive data from notecard
+    // receive settings data from notecard
     J* req3 = notecard.newRequest("note.get");
-    JAddStringToObject(req3, "file", "data.qi");
+    JAddStringToObject(req3, "file", "settingsUpdate.qi");
     JAddBoolToObject(req3, "delete", true);
 
     J* rsp = notecard.requestAndResponse(req3);
@@ -287,14 +294,14 @@ void doNotecard() {
 
       if (timer_mode) {
         setupTimer();
-      } else {
+      }
+      else {
         turnOffTimer();
       }
       Serial.println("Settings updated. Current settings: ");
       printCurrentSettings();
       sendCurrentSettingsNote();
     }
-
     notecard.deleteResponse(rsp);
 
     // Update the time
@@ -307,6 +314,24 @@ void doNotecard() {
 }
 
 void sendCurrentSettingsNote() {
+  J* req4 = notecard.newRequest("note.add");
+  if (req4 != NULL) {
+    JAddStringToObject(req4, "file", "settings.qo");
+    J* body = JAddObjectToObject(req4, "body");
+    if (body) {
+      JAddBoolToObject(body, "power_on", power_on);
+      JAddBoolToObject(body, "timer_mode", timer_mode);
+      JAddBoolToObject(body, "wifi_enabled", wifi_enabled);
+      JAddNumberToObject(body, "time_on_hour", time_on_hour);
+      JAddNumberToObject(body, "time_on_minute", time_on_min);
+      JAddNumberToObject(body, "time_off_hour", time_off_hour);
+      JAddNumberToObject(body, "time_off_minute", time_off_min);
+      JAddNumberToObject(body, "logging_interval", logging_interval);
+      JAddNumberToObject(body, "outbound_interval", outbound_interval);
+      JAddNumberToObject(body, "inbound_interval", inbound_interval);
+    }
+  }
+
 
 }
 //Updates the system time from the cellular time
@@ -392,10 +417,14 @@ void evaluateOutputState() {
   // Evaluate outputs based on state register
   switch (power_on) {
   case true:
-    powerOn();
+    if (!load_state.active) {
+      powerOn();
+    }
     break;
   case false:
-    powerOff();
+    if (load_state.active) {
+      powerOff();
+    }
     break;
   }
 }
@@ -403,18 +432,22 @@ void evaluateOutputState() {
 //Turns the load on
 void powerOn() {
   power_on = true;
+  Serial.println("Power turned on.");
   digitalWrite(LED_BUILTIN, HIGH);
   if (!load_state.active) {
     rover.setLoadState(1);
+    getCurrentControllerData();
   }
 }
 
 //Turns the load off
 void powerOff() {
   power_on = false;
+  Serial.println("Power turned off");
   digitalWrite(LED_BUILTIN, LOW);
   if (load_state.active) {
     rover.setLoadState(0);
+    getCurrentControllerData();
   }
 }
 
@@ -567,7 +600,7 @@ void doWiFi() {
 void printCurrentSettings() {
   Serial.print("Power State: ");
   Serial.println(power_on);
-  Serial.print("Power Mode: ");
+  Serial.print("Timer Mode: ");
   Serial.println(timer_mode);
   Serial.print("Time on: ");
   Serial.print(time_on_hour);
