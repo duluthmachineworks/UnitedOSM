@@ -35,6 +35,7 @@ To simplify construction, an "active cable" containing the RS232 tranciever was 
 6. +12V - White/Orange
 7. Not used - Green
 8. Not used - White/green 
+
 - **RJ-45 Connector**
 1. TX - Blue
 2. RX - White/Blue
