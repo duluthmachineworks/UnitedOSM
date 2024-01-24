@@ -69,6 +69,7 @@ void setupTemp(); //Sets up the temp sensor
 void setupWiFi(); //Sets up wifi
 void setupController(); //Sets up the connection with the controller
 void setupTimer(); //Sets up power on/off timers
+void turnOffTimer();  //Deletes all timer objects
 void doNotecard();  //Runs notecard update tasks
 void doWiFi();  //Runs an ad-hoc web page for status info
 void evaluateOutputState(); //Evaluates the output state to the load
@@ -78,6 +79,7 @@ void getTempData(); //Gets the current temp data from the optional sensor
 time_t getCurrentTimeFromNote();  //Updates the system time from the cellular time
 void getCurrentControllerData();  //Polls the controller for current data
 void printCurrentSettings();  //Prints the current settings to serial
+void sendCurrentSettingsNote();  //Sends a note with the current settings to the cloud
 
 /********* Default Functions *********/
 void setup() {
@@ -100,7 +102,6 @@ void setup() {
   //Startup other services
   setupTemp();
   setupController();
-  setupTimer();
   setupWiFi();
 
   // Set up hardware watchdog timer
@@ -144,6 +145,12 @@ void setupTimer() {
   Serial.print(Alarm.read(on_timer));
   Serial.print(", off at ");
   Serial.println(Alarm.read(off_timer));
+}
+
+//Deletes all timer objects
+void turnOffTimer() {
+  Alarm.free(on_timer);
+  Alarm.free(off_timer);
 }
 
 // ---- Notecard ---- //
@@ -278,8 +285,14 @@ void doNotecard() {
       outbound_interval = JGetNumber(body, "outbound_interval");
       wifi_enabled = JGetBool(body, "wifi_enabled");
 
+      if (timer_mode) {
+        setupTimer();
+      } else {
+        turnOffTimer();
+      }
       Serial.println("Settings updated. Current settings: ");
       printCurrentSettings();
+      sendCurrentSettingsNote();
     }
 
     notecard.deleteResponse(rsp);
@@ -293,6 +306,9 @@ void doNotecard() {
   }
 }
 
+void sendCurrentSettingsNote() {
+
+}
 //Updates the system time from the cellular time
 time_t getCurrentTimeFromNote() {
   // char time_string[12];
