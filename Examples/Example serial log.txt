@@ -1,0 +1,90 @@
+This is an example log of an ideal setup and data exchange, firmware v0.5.3
+
+--- Terminal on COM8 | 9600 8-N-1
+--- Available filters and text transformations: colorize, debug, default, direct, esp32_exception_decoder, hexlify, log2file, nocontrol, printable, send_on_enter, time
+--- More details at https://bit.ly/pio-monitor-filters
+--- Quit: Ctrl+C | Menu: Ctrl+T | Help: Ctrl+T followed by Ctrl+H
+!�
+�␜ܠ��J��1��1!���!�J�
+
+Starting Notecard...
+[INFO] {"req":"hub.set","product":"com.unitedconsulting.clee:solarmonitor","mode":"periodic","outbound":1,"inbound":1,"sn":"UC_unit_b","body":{"agent":"note-arduino","compiler":"gcc 8.4.0","req_interface":"i2c","cpu_name":"esp32"},"crc":"0000:C29A40ED"}
+[INFO] {}
+
+[INFO] {"req":"card.location.mode","mode":"periodic","seconds":3600,"crc":"0001:47F2A8B0"}
+[INFO] {"seconds":3600,"mode":"periodic"}
+
+[INFO] {"req":"card.location.track","sync":true,"heartbeat":true,"hours":12,"crc":"0002:893A6903"}
+[INFO] {"stop":true,"hours":12}
+
+. . . . . Settings read from flash
+Firmware version: 0.5.3
+Firmware date: rev.25/01/2024
+Power State: 0
+Timer Mode: 1
+Time on: 15:10
+Time off: 16:0
+Timer on time: 06:28
+Timer off time: 06:28
+Logging interval: 1
+Inbound interval: 1
+Outbound interval: 1
+[INFO] {"req":"card.time","crc":"0003:1110F247"}
+[INFO] {"minutes":-300,"lat":33.944687500000015,"lon":-84.221015625,"area":"Norcross GA","country":"US","zone":"EST,America/New_York","time":1706213401}
+
+Current time updated: 15:10
+Temp sensor ready.
+RS232 connection to Rover initialized
+Timer set to turn on at 15:10, off at 16:0
+Setting AP (Access Point)…
+SSID: ESP32_Test
+ AP IP address: 192.168.4.1
+***** Setup Complete *****
+
+Controller data updated
+[INFO] {"req":"note.add","file":"controller.qo","body":{"battery":{"StateOfCharge":99,"BatteryVoltage":13.10000038146973,"BatteryTemperature":19,"ChargingCurrent":0},"panel":{"PanelVoltage":0,"PanelCurrent":0,"PanelPower":0},"controller":{"Controller_Time":"15:10:51","OSMTemperature":19.79999923706055,"RoverTemperature":21},"load":{"LoadState":false,"LoadVoltage":0,"LoadCurrent":0,"LoadPower":0},"statistics":{"OperatingDays":133,"OverDischarges":11,"FullCharges":0,"ChargingAH":1178,"DischargingAH":981,"PowerGenerated":1.5,"PowerConsumed":1.299999952316284},"dayStatistics":{"BattVoltageMin":12.80000019073486,"BattVoltageMax":13.5,"MaxChargeCurrent":0,"MaxChargePower":0,"MaxDischargeCurrent":1.649999976158142,"MaxDischargePower":18,"chargingAH_day":0,"DischargingAH_day":38,"PowerGenerated_day":0,"PowerConsumed_day":494}},"crc":"0004:BB307450"}
+[INFO] {"total":1}
+
+[INFO] {"req":"note.get","file":"settingsUpdate.qi","delete":true,"crc":"0005:BBEE0A14"}
+[INFO] {"err":"no notes available in queue {note-noexist}"}
+
+No notes available
+[INFO] {"req":"card.time","crc":"0006:1110F247"}
+[INFO] {"minutes":-300,"lat":33.944687500000015,"lon":-84.221015625,"area":"Norcross GA","country":"US","zone":"EST,America/New_York","time":1706213454}
+
+Current time updated: 15:10
+Sensor data transmitted
+Controller data updated
+[INFO] {"req":"note.add","file":"controller.qo","body":{"battery":{"StateOfCharge":97,"BatteryVoltage":13.10000038146973,"BatteryTemperature":19,"ChargingCurrent":0},"panel":{"PanelVoltage":0,"PanelCurrent":0,"PanelPower":0},"controller":{"Controller_Time":"15:11:50","OSMTemperature":19.79999923706055,"RoverTemperature":21},"load":{"LoadState":false,"LoadVoltage":0,"LoadCurrent":0,"LoadPower":0},"statistics":{"OperatingDays":133,"OverDischarges":11,"FullCharges":0,"ChargingAH":1178,"DischargingAH":981,"PowerGenerated":1.5,"PowerConsumed":1.299999952316284},"dayStatistics":{"BattVoltageMin":12.80000019073486,"BattVoltageMax":13.5,"MaxChargeCurrent":0,"MaxChargePower":0,"MaxDischargeCurrent":1.649999976158142,"MaxDischargePower":18,"chargingAH_day":0,"DischargingAH_day":38,"PowerGenerated_day":0,"PowerConsumed_day":494}},"crc":"0007:5CC5EF10"}
+[INFO] {"total":1}
+
+[INFO] {"req":"note.get","file":"settingsUpdate.qi","delete":true,"crc":"0008:BBEE0A14"}
+[INFO] {"body":{"inbound_interval":10,"logging_interval":5,"outbound_interval":10,"power_on":false,"time_off_hour":15,"time_off_min":30,"time_on_hour":16,"time_on_min":10,"timer_mode":true,"wifi_enabled":false},"time":1706213486}
+
+Timer set to turn on at 16:10, off at 15:30
+Settings written to flash
+Settings read from flash
+[INFO] {"req":"hub.set","mode":"periodic","outbound":10,"inbound":10,"crc":"0009:F7A7353A"}
+[INFO] {}
+
+Settings updated. Current settings: 
+Firmware version: 0.5.3
+Firmware date: rev.25/01/2024
+Power State: 0
+Timer Mode: 1
+Time on: 16:10
+Time off: 15:30
+Timer on time: 16:10
+Timer off time: 15:30
+Logging interval: 5
+Inbound interval: 10
+Outbound interval: 10
+Settings read from flash
+[INFO] {"req":"note.add","file":"settings.qo","body":{"firmware_version":"0.5.3","firmware_date":"rev.25/01/2024","controller_time":"15:11:54","power_on":false,"timer_mode":true,"wifi_enabled":false,"time_on_hour":16,"time_on_minute":10,"time_off_hour":15,"time_off_minute":30,"timer_on":"16:10","timer_off":"15:30","logging_interval":5,"outbound_interval":10,"inbound_interval":10},"crc":"000A:C98D2A22"}
+[INFO] {"total":1}
+
+[INFO] {"req":"card.time","crc":"000B:1110F247"}
+[INFO] {"minutes":-300,"lat":33.944687500000015,"lon":-84.221015625,"area":"Norcross GA","country":"US","zone":"EST,America/New_York","time":1706213516}
+
+Current time updated: 15:11
+Sensor data transmitted
