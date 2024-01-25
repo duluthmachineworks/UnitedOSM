@@ -5,6 +5,7 @@
 #include <Wire.h>
 #include <esp_task_wdt.h>
 #include <string>
+#include <Preferences.h>
 
 #include "RenogyRover.h"
 #include "SparkFun_STTS22H.h"
@@ -19,12 +20,22 @@
 // Hardware watchdog timeout
 #define WDT_TIMEOUT 5 // in seconds
 
+//Init flash storage
+Preferences preferences;
+
 // Notecard
 #define PRODUCT_UID "com.unitedconsulting.clee:solarmonitor"
 #define SEND_INTERVAL 15000
 bool send_time_updates = false;
 Notecard notecard;
 float notecard_temp;
+
+// Unchangeable firmware_data
+int firmware_version_prim = 1;
+int firmware_version_sec = 0;
+int firmware_updated_d = 25;
+int firmware_updated_m = 0;
+int firmware_updated_y = 2024;
 
 // Changeable Settings
 int logging_interval = 5; // in minutes
@@ -81,6 +92,9 @@ void powerOff(); //Turns the load off
 void getTempData(); //Gets the current temp data from the optional sensor
 time_t getCurrentTimeFromNote();  //Updates the system time from the cellular time
 void getCurrentControllerData();  //Polls the controller for current data
+
+void updateSettings();  //Saves new settings to flash
+void readSettings();  //Reads settings from flash
 void printCurrentSettings();  //Prints the current settings to serial
 void sendCurrentSettingsNote();  //Sends a note with the current settings to the cloud
 
@@ -99,12 +113,17 @@ void setup() {
     delay(1000); //allow the notecard to get started
   }
 
+  //Update settings from flash
+  readSettings();
+  printCurrentSettings();
+
   // Start time sync services
   setSyncProvider(getCurrentTimeFromNote);
 
   //Startup other services
   setupTemp();
   setupController();
+  setupTimer();
   setupWiFi();
 
   // Set up hardware watchdog timer
@@ -317,7 +336,8 @@ void doNotecard() {
       else {
         turnOffTimer();
       }
-
+      updateSettings();
+      readSettings();
       updateNotecard();
 
       Serial.println("Settings updated. Current settings: ");
@@ -630,6 +650,45 @@ void doWiFi() {
     Serial.println("Client disconnected.");
     Serial.println("");
   }
+}
+
+//Updates the settings saved to flash
+void updateSettings() {
+  preferences.begin("app_settings", false);
+
+  preferences.putBool("power_on", power_on);
+  preferences.putBool("timer_mode", timer_mode);
+  preferences.putBool("wifi_enabled", wifi_enabled);
+  preferences.putInt("time_on_hour", time_on_hour);
+  preferences.putInt("time_on_minute", time_on_min);
+  preferences.putInt("time_off_hour", time_off_hour);
+  preferences.putInt("time_off_minute", time_off_min);
+  preferences.putInt("logging_interval", logging_interval);
+  preferences.putInt("outbound_interval", outbound_interval);
+  preferences.putInt("inbound_interval", inbound_interval);
+
+  preferences.end();
+
+  Serial.println("Settings written to flash");
+}
+
+void readSettings() {
+  preferences.begin("app_settings", false);
+
+  power_on = preferences.getBool("power_on");
+  timer_mode = preferences.getBool("timer_mode");
+  wifi_enabled = preferences.getBool("wifi_enabled");
+  time_on_hour = preferences.getInt("time_on_hour");
+  time_on_min = preferences.getInt("time_on_minute");
+  time_off_hour = preferences.getInt("time_off_hour");
+  time_off_min = preferences.getInt("time_off_minute");
+  logging_interval = preferences.getInt("logging_interval");
+  outbound_interval = preferences.getInt("outbound_interval");
+  inbound_interval = preferences.getInt("inbound_interval");
+
+  preferences.end();
+
+  Serial.println("Settings read from flash");
 }
 
 //Prints the current settings to serial
