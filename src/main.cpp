@@ -67,6 +67,7 @@ DayStatistics day_statistics;
 
 /********* Function Declarations ********/
 void setupNotecard(); //Sets up the notecard
+void updateNotecard();  //Updates the notecard
 void setupTemp(); //Sets up the temp sensor
 void setupWiFi(); //Sets up wifi
 void setupController(); //Sets up the connection with the controller
@@ -167,6 +168,17 @@ void turnOffTimer() {
 void setupNotecard() {
   notecard.begin();
   notecard.setDebugOutputStream(Serial);
+  J* req = notecard.newRequest("hub.set");
+  JAddStringToObject(req, "product", PRODUCT_UID);
+  JAddStringToObject(req, "mode", "periodic");
+  JAddNumberToObject(req, "outbound", outbound_interval);
+  JAddNumberToObject(req, "inbound", inbound_interval);
+  JAddStringToObject(req, "sn", "UC_unit_b");
+  notecard.sendRequest(req);
+}
+
+//updates the notecard
+void updateNotecard() {
   J* req = notecard.newRequest("hub.set");
   JAddStringToObject(req, "product", PRODUCT_UID);
   JAddStringToObject(req, "mode", "periodic");
@@ -305,6 +317,9 @@ void doNotecard() {
       else {
         turnOffTimer();
       }
+
+      updateNotecard();
+      
       Serial.println("Settings updated. Current settings: ");
       printCurrentSettings();
       sendCurrentSettingsNote();
