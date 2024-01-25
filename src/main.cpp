@@ -33,7 +33,7 @@ float notecard_temp;
 // Unchangeable firmware_data
 int firmware_version_prim = 0;
 int firmware_version_sec = 5;
-int firmware_version_tert = 2;
+int firmware_version_tert = 3;
 int firmware_updated_d = 25;
 int firmware_updated_m = 1;
 int firmware_updated_y = 2024;
@@ -385,7 +385,7 @@ void sendCurrentSettingsNote() {
   // build firmware versioning strings
   char firmware_version[10];
   char firmware_date[16];
-  sprintf(firmware_version, "%02d.%02d.%02d", firmware_version_prim, firmware_version_sec, firmware_version_tert);
+  sprintf(firmware_version, "%01d.%01d.%01d", firmware_version_prim, firmware_version_sec, firmware_version_tert);
   sprintf(firmware_date, "rev.%02d/%02d/%02d", firmware_updated_d, firmware_updated_m, firmware_updated_y);
 
   //Read the actual timer settings for the note, don't assume
@@ -727,7 +727,7 @@ void printCurrentSettings() {
    // build firmware versioning strings
   char firmware_version[10];
   char firmware_date[16];
-  sprintf(firmware_version, "%02d.%02d.%02d", firmware_version_prim, firmware_version_sec, firmware_version_tert);
+  sprintf(firmware_version, "%01d.%01d.%01d", firmware_version_prim, firmware_version_sec, firmware_version_tert);
   sprintf(firmware_date, "rev.%02d/%02d/%02d", firmware_updated_d, firmware_updated_m, firmware_updated_y);
 
   //Read the actual timer settings for the note, don't assume
