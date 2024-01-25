@@ -330,6 +330,7 @@ void sendCurrentSettingsNote() {
       JAddNumberToObject(body, "outbound_interval", outbound_interval);
       JAddNumberToObject(body, "inbound_interval", inbound_interval);
     }
+    notecard.sendRequest(req4);
   }
 
 
