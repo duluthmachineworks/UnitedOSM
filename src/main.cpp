@@ -31,8 +31,9 @@ Notecard notecard;
 float notecard_temp;
 
 // Unchangeable firmware_data
-int firmware_version_prim = 1;
-int firmware_version_sec = 0;
+int firmware_version_prim = 0;
+int firmware_version_sec = 5;
+int firmware_version_tert = 1;
 int firmware_updated_d = 25;
 int firmware_updated_m = 0;
 int firmware_updated_y = 2024;
@@ -372,6 +373,12 @@ void sendCurrentSettingsNote() {
   //update the time string
   sprintf(time_string, "%02d:%02d:%02d", hour(), minute(), second());
 
+  // build firmware versioning strings
+  char firmware_version[10];
+  char firmware_date[16];
+  sprintf(firmware_version, "%02d.%02d.%02d", firmware_version_prim, firmware_version_sec, firmware_version_tert);
+  sprintf(firmware_date, "rev.%02d/%02d/%02d", firmware_updated_d, firmware_updated_m, firmware_updated_y);
+
   //Read the actual timer settings for the note, don't assume
   char timer_on_string[10];
   char timer_off_string[10];
@@ -384,6 +391,8 @@ void sendCurrentSettingsNote() {
     JAddStringToObject(req4, "file", "settings.qo");
     J* body = JAddObjectToObject(req4, "body");
     if (body) {
+      JAddStringToObject(body, "firmware_version", firmware_version);
+      JAddStringToObject(body, "firmware_date", firmware_date);
       JAddStringToObject(body, "controller_time", time_string);
       JAddBoolToObject(body, "power_on", power_on);
       JAddBoolToObject(body, "timer_mode", timer_mode);
@@ -706,6 +715,22 @@ void readSettings() {
 
 //Prints the current settings to serial
 void printCurrentSettings() {
+   // build firmware versioning strings
+  char firmware_version[10];
+  char firmware_date[16];
+  sprintf(firmware_version, "%02d.%02d.%02d", firmware_version_prim, firmware_version_sec, firmware_version_tert);
+  sprintf(firmware_date, "rev.%02d/%02d/%02d", firmware_updated_d, firmware_updated_m, firmware_updated_y);
+
+  //Read the actual timer settings for the note, don't assume
+  char timer_on_string[10];
+  char timer_off_string[10];
+  sprintf(timer_on_string, "%02d:%02d", hour(Alarm.read(on_timer)), minute(Alarm.read(on_timer)));
+  sprintf(timer_off_string, "%02d:%02d", hour(Alarm.read(off_timer)), minute(Alarm.read(off_timer)));
+
+  Serial.print("Firmware version: ");
+  Serial.println(firmware_version);
+  Serial.print("Firmware date: ");
+  Serial.println(firmware_date);
   Serial.print("Power State: ");
   Serial.println(power_on);
   Serial.print("Timer Mode: ");
@@ -718,10 +743,15 @@ void printCurrentSettings() {
   Serial.print(time_off_hour);
   Serial.print(":");
   Serial.println(time_off_min);
+  Serial.print("Timer on time: ");
+  Serial.println(timer_on_string);
+  Serial.print("Timer off time: ");
+  Serial.println(timer_off_string);
   Serial.print("Logging interval: ");
   Serial.println(logging_interval);
   Serial.print("Inbound interval: ");
   Serial.println(inbound_interval);
   Serial.print("Outbound interval: ");
   Serial.println(outbound_interval);
+
 }
