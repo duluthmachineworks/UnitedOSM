@@ -194,6 +194,19 @@ void setupNotecard() {
   JAddNumberToObject(req, "inbound", inbound_interval);
   JAddStringToObject(req, "sn", "UC_unit_b");
   notecard.sendRequest(req);
+
+  req = notecard.newRequest("card.location.mode");
+  JAddStringToObject(req, "mode", "periodic");
+  JAddNumberToObject(req, "seconds", 3600);
+  notecard.sendRequest(req);
+
+  req = notecard.newRequest("card.location.track");
+  JAddBoolToObject(req, "sync", true);
+  JAddBoolToObject(req, "heartbeat", true);
+  JAddNumberToObject(req, "hours", 12);
+  notecard.sendRequest(req);
+
+
 }
 
 //updates the notecard
