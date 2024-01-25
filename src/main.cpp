@@ -18,7 +18,7 @@
 #define TXD2 17
 
 // Hardware watchdog timeout
-#define WDT_TIMEOUT 5 // in seconds
+#define WDT_TIMEOUT 30 // in seconds
 
 //Init flash storage
 Preferences preferences;
@@ -39,14 +39,14 @@ int firmware_updated_m = 1;
 int firmware_updated_y = 2024;
 
 // Changeable Settings
-int logging_interval = 5; // in minutes
-int outbound_interval = 10;
-int inbound_interval = 10;
+int logging_interval = 1; // in minutes
+int outbound_interval = 1;
+int inbound_interval = 1;
 bool power_on = true;
 bool timer_mode = false;
 bool wifi_enabled = false;      // default state is off
 int time_on_hour = 7;
-int time_on_min = 0;
+int time_on_min = 30;
 int time_off_hour = 18;
 int time_off_min = 0;
 
@@ -105,6 +105,8 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   Wire.begin();
   Serial.begin(9600);
+  Serial.println("");
+  Serial.println("");
 
   setupNotecard();
 
@@ -133,6 +135,9 @@ void setup() {
   // Set up hardware watchdog timer
   esp_task_wdt_init(WDT_TIMEOUT, true);
   esp_task_wdt_add(NULL);
+
+  Serial.println("***** Setup Complete *****");
+  Serial.println("");
 }
 
 void loop() {
@@ -189,6 +194,7 @@ void turnOffTimer() {
 // ---- Notecard ---- //
 //Sets up the notecard
 void setupNotecard() {
+  Serial.println("Starting Notecard...");
   notecard.begin();
   notecard.setDebugOutputStream(Serial);
   J* req = notecard.newRequest("hub.set");
@@ -216,11 +222,9 @@ void setupNotecard() {
 //updates the notecard
 void updateNotecard() {
   J* req = notecard.newRequest("hub.set");
-  JAddStringToObject(req, "product", PRODUCT_UID);
   JAddStringToObject(req, "mode", "periodic");
   JAddNumberToObject(req, "outbound", outbound_interval);
   JAddNumberToObject(req, "inbound", inbound_interval);
-  JAddStringToObject(req, "sn", "UC_unit_b");
   notecard.sendRequest(req);
 }
 
@@ -558,7 +562,7 @@ void getCurrentControllerData() {
   rover.getControllerLoadState(&load_state);
   rover.getHistoricalStatistics(&controller_statistics);
   rover.getDayStatistics(&day_statistics);
-  Serial.print("Controller data updated");
+  Serial.println("Controller data updated");
 }
 
 // ---- WiFi Functions ---- //
