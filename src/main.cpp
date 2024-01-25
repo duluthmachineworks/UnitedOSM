@@ -319,7 +319,7 @@ void doNotecard() {
       }
 
       updateNotecard();
-      
+
       Serial.println("Settings updated. Current settings: ");
       printCurrentSettings();
       sendCurrentSettingsNote();
@@ -339,6 +339,13 @@ void sendCurrentSettingsNote() {
   //update the time string
   sprintf(time_string, "%02d:%02d:%02d", hour(), minute(), second());
 
+  //Read the actual timer settings for the note, don't assume
+  char timer_on_string[10];
+  char timer_off_string[10];
+  sprintf(timer_on_string, "%02d:%02d", hour(Alarm.read(on_timer)), minute(Alarm.read(on_timer)));
+  sprintf(timer_off_string, "%02d:%02d", hour(Alarm.read(off_timer)), minute(Alarm.read(off_timer)));
+
+  //Build settings.qo
   J* req4 = notecard.newRequest("note.add");
   if (req4 != NULL) {
     JAddStringToObject(req4, "file", "settings.qo");
@@ -352,6 +359,8 @@ void sendCurrentSettingsNote() {
       JAddNumberToObject(body, "time_on_minute", time_on_min);
       JAddNumberToObject(body, "time_off_hour", time_off_hour);
       JAddNumberToObject(body, "time_off_minute", time_off_min);
+      JAddStringToObject(body, "timer_on", timer_on_string);
+      JAddStringToObject(body, "timer_off", timer_off_string);
       JAddNumberToObject(body, "logging_interval", logging_interval);
       JAddNumberToObject(body, "outbound_interval", outbound_interval);
       JAddNumberToObject(body, "inbound_interval", inbound_interval);
