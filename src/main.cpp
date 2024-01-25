@@ -4,6 +4,7 @@
 #include <WiFi.h>
 #include <Wire.h>
 #include <esp_task_wdt.h>
+#include <string>
 
 #include "RenogyRover.h"
 #include "SparkFun_STTS22H.h"
@@ -52,6 +53,7 @@ const long timeout_time = 2000;
 unsigned long current_time = millis();
 unsigned long previous_time = 0;
 unsigned long previous_data_time = 0;
+char time_string[10];
 AlarmId on_timer;
 AlarmId off_timer;
 
@@ -199,6 +201,10 @@ void doNotecard() {
     */
 
     // Controller Data
+    //update the time string
+    sprintf(time_string, "%02d:%02d:%02d", hour(), minute(), second());
+
+    //Build the controller.qo note
     J* req2 = notecard.newRequest("note.add");
     if (req2 != NULL) {
       JAddStringToObject(req2, "file", "controller.qo");
@@ -220,6 +226,7 @@ void doNotecard() {
         }
         J* controller = JAddObjectToObject(body, "controller");
         if (controller) {
+          JAddStringToObject(controller, "Controller_Time", time_string);
           JAddNumberToObject(controller, "OSMTemperature", roundf(ext_temp * 10) / 10);
           JAddNumberToObject(controller, "RoverTemperature", battery_state.controllerTemperature);
         }
@@ -314,11 +321,15 @@ void doNotecard() {
 }
 
 void sendCurrentSettingsNote() {
+  //update the time string
+  sprintf(time_string, "%02d:%02d:%02d", hour(), minute(), second());
+
   J* req4 = notecard.newRequest("note.add");
   if (req4 != NULL) {
     JAddStringToObject(req4, "file", "settings.qo");
     J* body = JAddObjectToObject(req4, "body");
     if (body) {
+      JAddStringToObject(body, "controller_time", time_string);
       JAddBoolToObject(body, "power_on", power_on);
       JAddBoolToObject(body, "timer_mode", timer_mode);
       JAddBoolToObject(body, "wifi_enabled", wifi_enabled);
@@ -551,7 +562,7 @@ void doWiFi() {
             client.println(".button2 {background-color: "
               "#555555;}</style></head>");
 
-// Web Page Heading
+            // Web Page Heading
             client.println("<body><h1>ESP32 Web Server</h1>");
 
             // Display current state, and ON/OFF buttons for GPIO 26
@@ -583,7 +594,7 @@ void doWiFi() {
           }
         }
         else if (c != '\r') { // if you got anything else but a carriage
-                             // return character,
+          // return character,
           currentLine += c;     // add it to the end of the currentLine
         }
       }
