@@ -33,9 +33,9 @@ float notecard_temp;
 // Unchangeable firmware_data
 int firmware_version_prim = 0;
 int firmware_version_sec = 5;
-int firmware_version_tert = 1;
+int firmware_version_tert = 2;
 int firmware_updated_d = 25;
-int firmware_updated_m = 0;
+int firmware_updated_m = 1;
 int firmware_updated_y = 2024;
 
 // Changeable Settings
@@ -115,6 +115,9 @@ void setup() {
   }
 
   //Update settings from flash
+  //On first run on a new board, you must run an updateSettings() command to write the flash memory
+  //This will be fixed in later versions.
+  //updateSettings();
   readSettings();
   printCurrentSettings();
 
@@ -370,6 +373,8 @@ void doNotecard() {
 }
 
 void sendCurrentSettingsNote() {
+  readSettings();
+
   //update the time string
   sprintf(time_string, "%02d:%02d:%02d", hour(), minute(), second());
 
@@ -685,9 +690,9 @@ void updateSettings() {
   preferences.putInt("time_on_minute", time_on_min);
   preferences.putInt("time_off_hour", time_off_hour);
   preferences.putInt("time_off_minute", time_off_min);
-  preferences.putInt("logging_interval", logging_interval);
-  preferences.putInt("outbound_interval", outbound_interval);
-  preferences.putInt("inbound_interval", inbound_interval);
+  preferences.putInt("logging_int", logging_interval);
+  preferences.putInt("outbound_int", outbound_interval);
+  preferences.putInt("inbound_int", inbound_interval);
 
   preferences.end();
 
@@ -704,9 +709,9 @@ void readSettings() {
   time_on_min = preferences.getInt("time_on_minute");
   time_off_hour = preferences.getInt("time_off_hour");
   time_off_min = preferences.getInt("time_off_minute");
-  logging_interval = preferences.getInt("logging_interval");
-  outbound_interval = preferences.getInt("outbound_interval");
-  inbound_interval = preferences.getInt("inbound_interval");
+  logging_interval = preferences.getInt("logging_int");
+  outbound_interval = preferences.getInt("outbound_int");
+  inbound_interval = preferences.getInt("inbound_int");
 
   preferences.end();
 
