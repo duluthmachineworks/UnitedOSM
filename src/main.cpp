@@ -108,7 +108,7 @@ void setup() {
   Serial.println("");
   Serial.println("");
 
-  setupNotecard();
+
 
   for (int i = 0; i < 5; i++)
   {
@@ -123,7 +123,15 @@ void setup() {
   readSettings();
   printCurrentSettings();
 
-  // Start time sync services
+  for (int i = 0; i < 5; i++)
+  {
+    Serial.print(". ");
+    delay(1000); //allow the notecard to get started
+  }
+
+  setupNotecard();
+  
+   // Start time sync services
   setSyncProvider(getCurrentTimeFromNote);
 
   //Startup other services
