@@ -1,3 +1,21 @@
+/* SPDX-License-Identifier: GPL-3.0-only or GPL-3.0-or-later */
+/*
+ * Copyright (C) 2024 Christopher E. Lee clee@unitedconsulting.com
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 #include <Arduino.h>
 #include <HardwareSerial.h>
 #include <Notecard.h>
@@ -30,25 +48,27 @@ bool send_time_updates = false;
 Notecard notecard;
 float notecard_temp;
 
-// Unchangeable firmware_data
+// Firmware_data
 int firmware_version_prim = 0;
 int firmware_version_sec = 5;
-int firmware_version_tert = 3;
-int firmware_updated_d = 25;
+int firmware_version_tert = 4;
+int firmware_updated_d = 31;
 int firmware_updated_m = 1;
 int firmware_updated_y = 2024;
 
 // Changeable Settings
-int logging_interval = 1; // in minutes
-int outbound_interval = 1;
-int inbound_interval = 1;
+int logging_interval = 5; // in minutes
+int outbound_interval = 5;
+int inbound_interval = 5;
 bool power_on = true;
-bool timer_mode = false;
+bool timer_mode = true;
 bool wifi_enabled = false;      // default state is off
 int time_on_hour = 7;
 int time_on_min = 30;
 int time_off_hour = 18;
 int time_off_min = 0;
+int time_reset_hour = 1;
+int time_reset_minute = 0;
 
 // Temp sensor
 SparkFun_STTS22H tempSensor;
@@ -68,6 +88,7 @@ unsigned long previous_data_time = 0;
 char time_string[10];
 AlarmId on_timer;
 AlarmId off_timer;
+AlarmId reset_timer;
 
 // Charge Controller (Renogy Rover)
 RenogyRover rover(255); // Default modbus ID 255
@@ -98,6 +119,9 @@ void updateSettings();  //Saves new settings to flash
 void readSettings();  //Reads settings from flash
 void printCurrentSettings();  //Prints the current settings to serial
 void sendCurrentSettingsNote();  //Sends a note with the current settings to the cloud
+
+void resetESP();
+
 
 /********* Default Functions *********/
 void setup() {
@@ -138,7 +162,7 @@ void setup() {
   setupTemp();
   setupController();
   setupTimer();
-  setupWiFi();
+  //setupWiFi();
 
   // Set up hardware watchdog timer
   esp_task_wdt_init(WDT_TIMEOUT, true);
@@ -173,8 +197,11 @@ void loop() {
 
 /******** Function Definitions ********/
 // ---- Timer ---- //
+
 //Sets up power on/off timers
 void setupTimer() {
+  
+  
   //Erase existing alarm
   Alarm.free(on_timer);
   Alarm.free(off_timer);
@@ -191,6 +218,13 @@ void setupTimer() {
   Serial.print(hour(Alarm.read(off_timer)));
   Serial.print(":");
   Serial.println(minute(Alarm.read(off_timer)));
+  
+  //Set up global reset timer
+  reset_timer = Alarm.alarmRepeat(time_reset_hour, time_reset_minute, 0, resetESP);
+  Serial.print("Reset timer set to ");
+  Serial.print(hour(Alarm.read(reset_timer)));
+  Serial.print(":");
+  Serial.println(minute(Alarm.read(reset_timer)));
 }
 
 //Deletes all timer objects
@@ -359,6 +393,10 @@ void doNotecard() {
       outbound_interval = JGetNumber(body, "outbound_interval");
       wifi_enabled = JGetBool(body, "wifi_enabled");
 
+      if (JGetBool(body, "reset_esp_now")) {
+        resetESP();
+      }
+
       if (timer_mode) {
         setupTimer();
       }
@@ -474,6 +512,7 @@ time_t getCurrentTimeFromNote() {
 }
 
 // ---- Temp Sensor ---- //
+
 //Sets up the temp sensor
 void setupTemp() {
   if (!tempSensor.begin()) {
@@ -507,6 +546,7 @@ void getTempData() {
 }
 
 // ---- Output state machine ---- //
+
 //Evaluates the output state to the load
 void evaluateOutputState() {
   // Evaluate outputs based on state register
@@ -547,6 +587,7 @@ void powerOff() {
 }
 
 // ---- Rover Functions ---- //
+
 //Sets up the connection with the controller
 void setupController() {
   Serial2.begin(9600, SERIAL_8N1, RDX2, TXD2);
@@ -574,6 +615,7 @@ void getCurrentControllerData() {
 }
 
 // ---- WiFi Functions ---- //
+
 //Sets up wifi
 void setupWiFi() {
   // Connect to Wi-Fi network with SSID and password
@@ -771,4 +813,10 @@ void printCurrentSettings() {
   Serial.print("Outbound interval: ");
   Serial.println(outbound_interval);
 
+}
+
+// ---- System Functions ---- //
+void resetESP() {
+  Serial.println("Restarting ESP");
+  ESP.restart();
 }
