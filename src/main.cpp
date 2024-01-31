@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only or GPL-3.0-or-later */
 /*
  * Copyright (C) 2024 Christopher E. Lee clee@unitedconsulting.com
- * 
+ *
  * This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
@@ -51,7 +51,7 @@ float notecard_temp;
 // Firmware_data
 int firmware_version_prim = 0;
 int firmware_version_sec = 5;
-int firmware_version_tert = 4;
+int firmware_version_tert = 5;
 int firmware_updated_d = 31;
 int firmware_updated_m = 1;
 int firmware_updated_y = 2024;
@@ -154,7 +154,7 @@ void setup() {
   }
 
   setupNotecard();
-  
+
    // Start time sync services
   setSyncProvider(getCurrentTimeFromNote);
 
@@ -200,8 +200,8 @@ void loop() {
 
 //Sets up power on/off timers
 void setupTimer() {
-  
-  
+
+
   //Erase existing alarm
   Alarm.free(on_timer);
   Alarm.free(off_timer);
@@ -218,7 +218,7 @@ void setupTimer() {
   Serial.print(hour(Alarm.read(off_timer)));
   Serial.print(":");
   Serial.println(minute(Alarm.read(off_timer)));
-  
+
   //Set up global reset timer
   reset_timer = Alarm.alarmRepeat(time_reset_hour, time_reset_minute, 0, resetESP);
   Serial.print("Reset timer set to ");
@@ -239,6 +239,8 @@ void setupNotecard() {
   Serial.println("Starting Notecard...");
   notecard.begin();
   notecard.setDebugOutputStream(Serial);
+
+  //Initial hub.set request
   J* req = notecard.newRequest("hub.set");
   JAddStringToObject(req, "product", PRODUCT_UID);
   JAddStringToObject(req, "mode", "periodic");
@@ -247,18 +249,23 @@ void setupNotecard() {
   JAddStringToObject(req, "sn", "UC_unit_b");
   notecard.sendRequest(req);
 
+  //Turn on accelerometer
+  req = notecard.newRequest("card.motion.mode");
+  JAddStringToObject(req, "start", "true");
+  notecard.sendRequest(req);
+
+  //Tracking mode set
   req = notecard.newRequest("card.location.mode");
   JAddStringToObject(req, "mode", "periodic");
   JAddNumberToObject(req, "seconds", 3600);
   notecard.sendRequest(req);
 
+  //Enable heartbeat
   req = notecard.newRequest("card.location.track");
   JAddBoolToObject(req, "sync", true);
   JAddBoolToObject(req, "heartbeat", true);
   JAddNumberToObject(req, "hours", 12);
   notecard.sendRequest(req);
-
-
 }
 
 //updates the notecard
