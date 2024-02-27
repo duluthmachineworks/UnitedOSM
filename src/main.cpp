@@ -44,6 +44,7 @@ Preferences preferences;
 // Notecard
 #define PRODUCT_UID "com.unitedconsulting.clee:solarmonitor"
 #define SEND_INTERVAL 15000
+#define SERIAL_NO "UC_Unit_A"
 bool send_time_updates = false;
 Notecard notecard;
 float notecard_temp;
@@ -69,6 +70,9 @@ int time_off_hour = 18;
 int time_off_min = 0;
 int time_reset_hour = 1;
 int time_reset_minute = 0;
+bool enable_renogy = true;
+bool enable_STTS22H = false;
+bool enable_sen5x = false;
 
 // Temp sensor
 SparkFun_STTS22H tempSensor;
@@ -101,24 +105,30 @@ DayStatistics day_statistics;
 /********* Function Declarations ********/
 void setupNotecard(); //Sets up the notecard
 void updateNotecard();  //Updates the notecard
-void setupTemp(); //Sets up the temp sensor
-void setupWiFi(); //Sets up wifi
-void setupController(); //Sets up the connection with the controller
-void setupTimer(); //Sets up power on/off timers
-void turnOffTimer();  //Deletes all timer objects
 void doNotecard();  //Runs notecard update tasks
+time_t getCurrentTimeFromNote();  //Updates the system time from the cellular time
+void sendCurrentSettingsNote();  //Sends a note with the current settings to the cloud
+
+void setupTemp(); //Sets up the temp sensor
+void getTempData(); //Gets the current temp data from the optional sensor
+
+void setupWiFi(); //Sets up wifi
 void doWiFi();  //Runs an ad-hoc web page for status info
-void evaluateOutputState(); //Evaluates the output state to the load
+
+void setupController(); //Sets up the connection with the controller
+void getCurrentControllerData();  //Polls the controller for current data
 void powerOn(); //Turns the load on
 void powerOff(); //Turns the load off
-void getTempData(); //Gets the current temp data from the optional sensor
-time_t getCurrentTimeFromNote();  //Updates the system time from the cellular time
-void getCurrentControllerData();  //Polls the controller for current data
+
+void setupTimer(); //Sets up power on/off timers
+void turnOffTimer();  //Deletes all timer objects
+
+void evaluateOutputState(); //Evaluates the output state to the load
 
 void updateSettings();  //Saves new settings to flash
 void readSettings();  //Reads settings from flash
 void printCurrentSettings();  //Prints the current settings to serial
-void sendCurrentSettingsNote();  //Sends a note with the current settings to the cloud
+void printStartupInfo();
 
 void resetESP();
 
@@ -132,8 +142,7 @@ void setup() {
   Serial.println("");
   Serial.println("");
 
-
-
+  printStartupInfo();
   for (int i = 0; i < 5; i++)
   {
     Serial.print(". ");
@@ -246,9 +255,9 @@ void setupNotecard() {
   JAddStringToObject(req, "mode", "periodic");
   JAddNumberToObject(req, "outbound", outbound_interval);
   JAddNumberToObject(req, "inbound", inbound_interval);
-  JAddStringToObject(req, "sn", "UC_unit_b");
+  JAddStringToObject(req, "sn", SERIAL_NO);
   notecard.sendRequest(req);
-
+/*
   //Turn on accelerometer
   req = notecard.newRequest("card.motion.mode");
   JAddStringToObject(req, "start", "true");
@@ -265,7 +274,7 @@ void setupNotecard() {
   JAddBoolToObject(req, "sync", true);
   JAddBoolToObject(req, "heartbeat", true);
   JAddNumberToObject(req, "hours", 12);
-  notecard.sendRequest(req);
+  notecard.sendRequest(req);*/
 }
 
 //updates the notecard
@@ -740,6 +749,16 @@ void doWiFi() {
   }
 }
 
+bool settingsEmpty() {
+  preferences.begin("app_settings", false);
+
+  if (preferences.isKey("power_on")) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 //Updates the settings saved to flash
 void updateSettings() {
   preferences.begin("app_settings", false);
@@ -826,4 +845,26 @@ void printCurrentSettings() {
 void resetESP() {
   Serial.println("Restarting ESP");
   ESP.restart();
+}
+
+void printStartupInfo() {
+  Serial.print("UnitedOSM Version ");
+  Serial.print(firmware_version_prim);
+  Serial.print(".");
+  Serial.print(firmware_version_sec);
+  Serial.print(".");
+  Serial.println(firmware_version_tert);
+
+  Serial.print("Updated on ");
+  Serial.print(firmware_updated_m);
+  Serial.print("/");
+  Serial.print(firmware_updated_d);
+  Serial.print("/");
+  Serial.println(firmware_updated_d);
+  Serial.println();
+
+  Serial.println("Copyright (C) 2024 Christopher E. Lee clee@unitedconsulting.com");
+  Serial.println("License: GPL-3.0-only");
+  Serial.println("This program is distributed WITHOUT ANY WARRANTY or FITNESS FOR A PARTICULAR PURPOSE.");
+
 }
