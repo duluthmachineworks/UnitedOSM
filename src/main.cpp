@@ -30,7 +30,7 @@
 #include "TimeLib.h"
 #include "TimeAlarms.h"
 
-// IO definitions
+ // IO definitions
 #define LED_PIN 13;
 #define RDX2 16
 #define TXD2 17
@@ -38,13 +38,13 @@
 // Hardware watchdog timeout
 #define WDT_TIMEOUT 30 // in seconds
 
-//Init flash storage
+// Init flash storage
 Preferences preferences;
 
 // Notecard
-#define PRODUCT_UID "com.unitedconsulting.clee:solarmonitor"
+#define PRODUCT_UID "com.unitedconsulting.clee:UnitedAQM"
 #define SEND_INTERVAL 15000
-#define SERIAL_NO "UC_Unit_A"
+#define SERIAL_NO "Proto_OD"
 bool send_time_updates = false;
 Notecard notecard;
 float notecard_temp;
@@ -63,7 +63,7 @@ int outbound_interval = 5;
 int inbound_interval = 5;
 bool power_on = true;
 bool timer_mode = true;
-bool wifi_enabled = false;      // default state is off
+// bool wifi_enabled = false;      // default state is off
 int time_on_hour = 7;
 int time_on_min = 30;
 int time_off_hour = 18;
@@ -73,6 +73,7 @@ int time_reset_minute = 0;
 bool enable_renogy = true;
 bool enable_STTS22H = false;
 bool enable_sen5x = false;
+bool enable_wifi = false;
 
 // Temp sensor
 SparkFun_STTS22H tempSensor;
@@ -103,39 +104,39 @@ HistStatistics controller_statistics;
 DayStatistics day_statistics;
 
 /********* Function Declarations ********/
-void setupNotecard(); //Sets up the notecard
-void updateNotecard();  //Updates the notecard
-void doNotecard();  //Runs notecard update tasks
-time_t getCurrentTimeFromNote();  //Updates the system time from the cellular time
-void sendCurrentSettingsNote();  //Sends a note with the current settings to the cloud
+void setupNotecard();            // Sets up the notecard
+void updateNotecard();           // Updates the notecard
+void doNotecard();               // Runs notecard update tasks
+time_t getCurrentTimeFromNote(); // Updates the system time from the cellular time
+void sendCurrentSettingsNote();  // Sends a note with the current settings to the cloud
 
-void setupTemp(); //Sets up the temp sensor
-void getTempData(); //Gets the current temp data from the optional sensor
+void setupTemp();   // Sets up the temp sensor
+void getTempData(); // Gets the current temp data from the optional sensor
 
-void setupWiFi(); //Sets up wifi
-void doWiFi();  //Runs an ad-hoc web page for status info
+void setupWiFi(); // Sets up wifi
+void doWiFi();    // Runs an ad-hoc web page for status info
 
-void setupController(); //Sets up the connection with the controller
-void getCurrentControllerData();  //Polls the controller for current data
-void powerOn(); //Turns the load on
-void powerOff(); //Turns the load off
+void setupController();          // Sets up the connection with the controller
+void getCurrentControllerData(); // Polls the controller for current data
+void powerOn();                  // Turns the load on
+void powerOff();                 // Turns the load off
 
-void setupTimer(); //Sets up power on/off timers
-void turnOffTimer();  //Deletes all timer objects
+void setupTimer();   // Sets up power on/off timers
+void turnOffTimer(); // Deletes all timer objects
 
-void evaluateOutputState(); //Evaluates the output state to the load
+void evaluateOutputState(); // Evaluates the output state to the load
 
-void updateSettings();  //Saves new settings to flash
-void readSettings();  //Reads settings from flash
-void printCurrentSettings();  //Prints the current settings to serial
+void updateSettings();       // Saves new settings to flash
+void readSettings();         // Reads settings from flash
+void printCurrentSettings(); // Prints the current settings to serial
 void printStartupInfo();
 
 void resetESP();
 
-
 /********* Default Functions *********/
-void setup() {
-  delay(2000); //Allow the notecard to boot
+void setup()
+{
+  delay(2000); // Allow the notecard to boot
   pinMode(LED_BUILTIN, OUTPUT);
   Wire.begin();
   Serial.begin(9600);
@@ -143,35 +144,39 @@ void setup() {
   Serial.println("");
 
   printStartupInfo();
-  for (int i = 0; i < 5; i++)
-  {
+  for (int i = 0; i < 5; i++) {
     Serial.print(". ");
-    delay(1000); //allow the notecard to get started
+    delay(1000); // allow the notecard to get started
   }
 
-  //Update settings from flash
-  //On first run on a new board, you must run an updateSettings() command to write the flash memory
-  //This will be fixed in later versions.
-  //updateSettings();
+  // Update settings from flash
+  // On first run on a new board, you must run an updateSettings() command to write the flash memory
+  // This will be fixed in later versions.
+  // updateSettings();
   readSettings();
   printCurrentSettings();
 
-  for (int i = 0; i < 5; i++)
-  {
+  for (int i = 0; i < 5; i++) {
     Serial.print(". ");
-    delay(1000); //allow the notecard to get started
+    delay(1000); // allow the notecard to get started
   }
 
   setupNotecard();
 
-   // Start time sync services
+  // Start time sync services
   setSyncProvider(getCurrentTimeFromNote);
 
-  //Startup other services
-  setupTemp();
-  setupController();
+  // Startup other services
   setupTimer();
-  //setupWiFi();
+  if (enable_STTS22H) {
+    setupTemp();
+  }
+  if (enable_renogy) {
+    setupController();
+  }
+  if (enable_wifi) {
+    setupWiFi();
+  }
 
   // Set up hardware watchdog timer
   esp_task_wdt_init(WDT_TIMEOUT, true);
@@ -181,16 +186,19 @@ void setup() {
   Serial.println("");
 }
 
-void loop() {
+void loop()
+{
   // Poll sensors
-  if (tempSensor.dataReady()) {
-    tempSensor.getTemperatureC(&ext_temp);
+  if (enable_STTS22H) {
+    if (tempSensor.dataReady()) {
+      tempSensor.getTemperatureC(&ext_temp);
+    }
   }
 
   // do actions
   doNotecard();
 
-  if (wifi_enabled) {
+  if (enable_wifi) {
     doWiFi();
   }
 
@@ -200,22 +208,22 @@ void loop() {
   // reset watchdog timer
   esp_task_wdt_reset();
 
-  //handle alarm scheduling
+  // handle alarm scheduling
   Alarm.delay(0);
 }
 
 /******** Function Definitions ********/
 // ---- Timer ---- //
 
-//Sets up power on/off timers
-void setupTimer() {
+// Sets up power on/off timers
+void setupTimer()
+{
 
-
-  //Erase existing alarm
+  // Erase existing alarm
   Alarm.free(on_timer);
   Alarm.free(off_timer);
 
-  //write new times
+  // write new times
   on_timer = Alarm.alarmRepeat(time_on_hour, time_on_min, 0, powerOn);
   off_timer = Alarm.alarmRepeat(time_off_hour, time_off_min, 0, powerOff);
 
@@ -228,7 +236,7 @@ void setupTimer() {
   Serial.print(":");
   Serial.println(minute(Alarm.read(off_timer)));
 
-  //Set up global reset timer
+  // Set up global reset timer
   reset_timer = Alarm.alarmRepeat(time_reset_hour, time_reset_minute, 0, resetESP);
   Serial.print("Reset timer set to ");
   Serial.print(hour(Alarm.read(reset_timer)));
@@ -236,20 +244,22 @@ void setupTimer() {
   Serial.println(minute(Alarm.read(reset_timer)));
 }
 
-//Deletes all timer objects
-void turnOffTimer() {
+// Deletes all timer objects
+void turnOffTimer()
+{
   Alarm.free(on_timer);
   Alarm.free(off_timer);
 }
 
 // ---- Notecard ---- //
-//Sets up the notecard
-void setupNotecard() {
+// Sets up the notecard
+void setupNotecard()
+{
   Serial.println("Starting Notecard...");
   notecard.begin();
   notecard.setDebugOutputStream(Serial);
 
-  //Initial hub.set request
+  // Initial hub.set request
   J* req = notecard.newRequest("hub.set");
   JAddStringToObject(req, "product", PRODUCT_UID);
   JAddStringToObject(req, "mode", "periodic");
@@ -257,28 +267,29 @@ void setupNotecard() {
   JAddNumberToObject(req, "inbound", inbound_interval);
   JAddStringToObject(req, "sn", SERIAL_NO);
   notecard.sendRequest(req);
-/*
-  //Turn on accelerometer
-  req = notecard.newRequest("card.motion.mode");
-  JAddStringToObject(req, "start", "true");
-  notecard.sendRequest(req);
+  /*
+    //Turn on accelerometer
+    req = notecard.newRequest("card.motion.mode");
+    JAddStringToObject(req, "start", "true");
+    notecard.sendRequest(req);
 
-  //Tracking mode set
-  req = notecard.newRequest("card.location.mode");
-  JAddStringToObject(req, "mode", "periodic");
-  JAddNumberToObject(req, "seconds", 3600);
-  notecard.sendRequest(req);
+    //Tracking mode set
+    req = notecard.newRequest("card.location.mode");
+    JAddStringToObject(req, "mode", "periodic");
+    JAddNumberToObject(req, "seconds", 3600);
+    notecard.sendRequest(req);
 
-  //Enable heartbeat
-  req = notecard.newRequest("card.location.track");
-  JAddBoolToObject(req, "sync", true);
-  JAddBoolToObject(req, "heartbeat", true);
-  JAddNumberToObject(req, "hours", 12);
-  notecard.sendRequest(req);*/
+    //Enable heartbeat
+    req = notecard.newRequest("card.location.track");
+    JAddBoolToObject(req, "sync", true);
+    JAddBoolToObject(req, "heartbeat", true);
+    JAddNumberToObject(req, "hours", 12);
+    notecard.sendRequest(req);*/
 }
 
-//updates the notecard
-void updateNotecard() {
+// updates the notecard
+void updateNotecard()
+{
   J* req = notecard.newRequest("hub.set");
   JAddStringToObject(req, "mode", "periodic");
   JAddNumberToObject(req, "outbound", outbound_interval);
@@ -286,8 +297,9 @@ void updateNotecard() {
   notecard.sendRequest(req);
 }
 
-//Runs notecard update tasks
-void doNotecard() {
+// Runs notecard update tasks
+void doNotecard()
+{
   current_time = millis();
   char power_state_string[4];
   char power_mode_string[10];
@@ -311,14 +323,14 @@ void doNotecard() {
     */
 
     // Controller Data
-    //update the time string
+    // update the time string
     sprintf(time_string, "%02d:%02d:%02d", hour(), minute(), second());
 
-    //Build the controller.qo note
+    // Build the controller.qo note
     J* req2 = notecard.newRequest("note.add");
     if (req2 != NULL) {
       JAddStringToObject(req2, "file", "controller.qo");
-      //JAddBoolToObject(req2, "sync", true);
+      // JAddBoolToObject(req2, "sync", true);
       J* body = JAddObjectToObject(req2, "body");
       if (body) {
         J* battery = JAddObjectToObject(body, "battery");
@@ -397,7 +409,7 @@ void doNotecard() {
     }
     else {
       J* body = JGetObject(rsp, "body");
-      wifi_enabled = JGetBool(body, "WifiEnabled");
+      //enable_wifi = JGetBool(body, "WifiEnabled");
       power_on = JGetBool(body, "power_on");
       timer_mode = JGetBool(body, "timer_mode");
       time_on_hour = JGetNumber(body, "time_on_hour");
@@ -407,7 +419,7 @@ void doNotecard() {
       logging_interval = JGetNumber(body, "logging_interval");
       inbound_interval = JGetNumber(body, "inbound_interval");
       outbound_interval = JGetNumber(body, "outbound_interval");
-      wifi_enabled = JGetBool(body, "wifi_enabled");
+      enable_wifi = JGetBool(body, "wifi_enabled");
 
       if (JGetBool(body, "reset_esp_now")) {
         resetESP();
@@ -438,10 +450,11 @@ void doNotecard() {
   }
 }
 
-void sendCurrentSettingsNote() {
+void sendCurrentSettingsNote()
+{
   readSettings();
 
-  //update the time string
+  // update the time string
   sprintf(time_string, "%02d:%02d:%02d", hour(), minute(), second());
 
   // build firmware versioning strings
@@ -450,13 +463,13 @@ void sendCurrentSettingsNote() {
   sprintf(firmware_version, "%01d.%01d.%01d", firmware_version_prim, firmware_version_sec, firmware_version_tert);
   sprintf(firmware_date, "rev.%02d/%02d/%02d", firmware_updated_d, firmware_updated_m, firmware_updated_y);
 
-  //Read the actual timer settings for the note, don't assume
+  // Read the actual timer settings for the note, don't assume
   char timer_on_string[10];
   char timer_off_string[10];
   sprintf(timer_on_string, "%02d:%02d", hour(Alarm.read(on_timer)), minute(Alarm.read(on_timer)));
   sprintf(timer_off_string, "%02d:%02d", hour(Alarm.read(off_timer)), minute(Alarm.read(off_timer)));
 
-  //Build settings.qo
+  // Build settings.qo
   J* req4 = notecard.newRequest("note.add");
   if (req4 != NULL) {
     JAddStringToObject(req4, "file", "settings.qo");
@@ -467,7 +480,7 @@ void sendCurrentSettingsNote() {
       JAddStringToObject(body, "controller_time", time_string);
       JAddBoolToObject(body, "power_on", power_on);
       JAddBoolToObject(body, "timer_mode", timer_mode);
-      JAddBoolToObject(body, "wifi_enabled", wifi_enabled);
+      JAddBoolToObject(body, "wifi_enabled", enable_wifi);
       JAddNumberToObject(body, "time_on_hour", time_on_hour);
       JAddNumberToObject(body, "time_on_minute", time_on_min);
       JAddNumberToObject(body, "time_off_hour", time_off_hour);
@@ -480,11 +493,10 @@ void sendCurrentSettingsNote() {
     }
     notecard.sendRequest(req4);
   }
-
-
 }
-//Updates the system time from the cellular time
-time_t getCurrentTimeFromNote() {
+// Updates the system time from the cellular time
+time_t getCurrentTimeFromNote()
+{
   // char time_string[12];
   unsigned long current_unix_time = 10;
 
@@ -529,8 +541,9 @@ time_t getCurrentTimeFromNote() {
 
 // ---- Temp Sensor ---- //
 
-//Sets up the temp sensor
-void setupTemp() {
+// Sets up the temp sensor
+void setupTemp()
+{
   if (!tempSensor.begin()) {
     Serial.println("Temp sensor did not begin.");
     while (1)
@@ -554,8 +567,9 @@ void setupTemp() {
   delay(100);
 }
 
-//Gets the current temp data from the optional sensor
-void getTempData() {
+// Gets the current temp data from the optional sensor
+void getTempData()
+{
   if (tempSensor.dataReady()) {
     tempSensor.getTemperatureF(&ext_temp);
   }
@@ -563,8 +577,9 @@ void getTempData() {
 
 // ---- Output state machine ---- //
 
-//Evaluates the output state to the load
-void evaluateOutputState() {
+// Evaluates the output state to the load
+void evaluateOutputState()
+{
   // Evaluate outputs based on state register
   switch (power_on) {
   case true:
@@ -580,8 +595,9 @@ void evaluateOutputState() {
   }
 }
 
-//Turns the load on
-void powerOn() {
+// Turns the load on
+void powerOn()
+{
   power_on = true;
   Serial.println("Power turned on.");
   digitalWrite(LED_BUILTIN, HIGH);
@@ -591,8 +607,9 @@ void powerOn() {
   }
 }
 
-//Turns the load off
-void powerOff() {
+// Turns the load off
+void powerOff()
+{
   power_on = false;
   Serial.println("Power turned off");
   digitalWrite(LED_BUILTIN, LOW);
@@ -604,8 +621,9 @@ void powerOff() {
 
 // ---- Rover Functions ---- //
 
-//Sets up the connection with the controller
-void setupController() {
+// Sets up the connection with the controller
+void setupController()
+{
   Serial2.begin(9600, SERIAL_8N1, RDX2, TXD2);
   rover.begin(Serial2);
 
@@ -620,8 +638,9 @@ void setupController() {
   }
 }
 
-//Polls the controller for current data
-void getCurrentControllerData() {
+// Polls the controller for current data
+void getCurrentControllerData()
+{
   rover.getBatteryState(&battery_state);
   rover.getPanelState(&panel_state);
   rover.getControllerLoadState(&load_state);
@@ -632,8 +651,9 @@ void getCurrentControllerData() {
 
 // ---- WiFi Functions ---- //
 
-//Sets up wifi
-void setupWiFi() {
+// Sets up wifi
+void setupWiFi()
+{
   // Connect to Wi-Fi network with SSID and password
   Serial.println("Setting AP (Access Point)…");
   // Remove the password parameter, if you want the AP (Access Point) to be
@@ -649,8 +669,9 @@ void setupWiFi() {
   server.begin();
 }
 
-//Runs an ad-hoc web page for status info
-void doWiFi() {
+// Runs an ad-hoc web page for status info
+void doWiFi()
+{
   WiFiClient client = server.available(); // Listen for incoming clients
 
   if (client) { // If a new client connects,
@@ -659,14 +680,14 @@ void doWiFi() {
 
     current_time = millis();
     previous_time = current_time;
-    Serial.println("New Client.");  // print a message out in the serial port
+    Serial.println("New Client."); // print a message out in the serial port
     String currentLine =
       ""; // make a String to hold incoming data from the client
     while (client.connected() &&
       current_time - previous_time <=
       timeout_time) { // loop while the client's connected
       current_time = millis();
-      if (client.available()) { // if there's bytes to read from the client,
+      if (client.available()) {                         // if there's bytes to read from the client,
         char c = client.read(); // read a byte, then
         Serial.write(c);        // print it out the serial monitor
         header += c;
@@ -736,7 +757,7 @@ void doWiFi() {
         }
         else if (c != '\r') { // if you got anything else but a carriage
           // return character,
-          currentLine += c;     // add it to the end of the currentLine
+          currentLine += c; // add it to the end of the currentLine
         }
       }
     }
@@ -749,23 +770,26 @@ void doWiFi() {
   }
 }
 
-bool settingsEmpty() {
+bool settingsEmpty()
+{
   preferences.begin("app_settings", false);
 
   if (preferences.isKey("power_on")) {
     return true;
-  } else {
+  }
+  else {
     return false;
   }
 }
 
-//Updates the settings saved to flash
-void updateSettings() {
+// Updates the settings saved to flash
+void updateSettings()
+{
   preferences.begin("app_settings", false);
 
   preferences.putBool("power_on", power_on);
   preferences.putBool("timer_mode", timer_mode);
-  preferences.putBool("wifi_enabled", wifi_enabled);
+  preferences.putBool("wifi_enabled", enable_wifi);
   preferences.putInt("time_on_hour", time_on_hour);
   preferences.putInt("time_on_minute", time_on_min);
   preferences.putInt("time_off_hour", time_off_hour);
@@ -779,12 +803,13 @@ void updateSettings() {
   Serial.println("Settings written to flash");
 }
 
-void readSettings() {
+void readSettings()
+{
   preferences.begin("app_settings", false);
 
   power_on = preferences.getBool("power_on");
   timer_mode = preferences.getBool("timer_mode");
-  wifi_enabled = preferences.getBool("wifi_enabled");
+  enable_wifi = preferences.getBool("wifi_enabled");
   time_on_hour = preferences.getInt("time_on_hour");
   time_on_min = preferences.getInt("time_on_minute");
   time_off_hour = preferences.getInt("time_off_hour");
@@ -798,15 +823,16 @@ void readSettings() {
   Serial.println("Settings read from flash");
 }
 
-//Prints the current settings to serial
-void printCurrentSettings() {
-   // build firmware versioning strings
+// Prints the current settings to serial
+void printCurrentSettings()
+{
+  // build firmware versioning strings
   char firmware_version[10];
   char firmware_date[16];
   sprintf(firmware_version, "%01d.%01d.%01d", firmware_version_prim, firmware_version_sec, firmware_version_tert);
   sprintf(firmware_date, "rev.%02d/%02d/%02d", firmware_updated_d, firmware_updated_m, firmware_updated_y);
 
-  //Read the actual timer settings for the note, don't assume
+  // Read the actual timer settings for the note, don't assume
   char timer_on_string[10];
   char timer_off_string[10];
   sprintf(timer_on_string, "%02d:%02d", hour(Alarm.read(on_timer)), minute(Alarm.read(on_timer)));
@@ -838,16 +864,17 @@ void printCurrentSettings() {
   Serial.println(inbound_interval);
   Serial.print("Outbound interval: ");
   Serial.println(outbound_interval);
-
 }
 
 // ---- System Functions ---- //
-void resetESP() {
+void resetESP()
+{
   Serial.println("Restarting ESP");
   ESP.restart();
 }
 
-void printStartupInfo() {
+void printStartupInfo()
+{
   Serial.print("UnitedOSM Version ");
   Serial.print(firmware_version_prim);
   Serial.print(".");
@@ -866,5 +893,4 @@ void printStartupInfo() {
   Serial.println("Copyright (C) 2024 Christopher E. Lee clee@unitedconsulting.com");
   Serial.println("License: GPL-3.0-only");
   Serial.println("This program is distributed WITHOUT ANY WARRANTY or FITNESS FOR A PARTICULAR PURPOSE.");
-
 }
