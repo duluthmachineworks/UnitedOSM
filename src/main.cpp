@@ -139,6 +139,7 @@ void updateSettings();       // Saves new settings to flash
 void readSettings();         // Reads settings from flash
 void printCurrentSettings(); // Prints the current settings to serial
 void printStartupInfo();
+void checkFirstRun();         //Looks for pre-existing settings in flash
 
 void resetESP();
 
@@ -158,10 +159,10 @@ void setup()
     delay(1000); // allow the notecard to get started
   }
 
-  // Update settings from flash
-  // On first run on a new board, you must run an updateSettings() command to write the flash memory
-  // This will be fixed in later versions.
-  // updateSettings();
+  // Update settings from flash if they don't exist
+  if (settingsEmpty()) {
+    updateSettings();
+  }
   readSettings();
   printCurrentSettings();
 
@@ -311,7 +312,7 @@ void updateNotecard()
 
 void sendControllerNote() {
   // update the time string
-    sprintf(time_string, "%02d:%02d:%02d", hour(), minute(), second());
+  sprintf(time_string, "%02d:%02d:%02d", hour(), minute(), second());
 
   // Build the controller.qo note
   J* req = notecard.newRequest("note.add");
@@ -460,7 +461,7 @@ void doNotecard()
     }
 
     // Controller Data
-    
+
 
 
 
@@ -882,10 +883,10 @@ bool settingsEmpty()
   preferences.begin("app_settings", false);
 
   if (preferences.isKey("power_on")) {
-    return true;
+    return false;
   }
   else {
-    return false;
+    return true;
   }
 }
 
