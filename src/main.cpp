@@ -27,6 +27,7 @@
 
 #include "RenogyRover.h"
 #include "SparkFun_STTS22H.h"
+#include <SensirionI2CSen5x.h>
 #include "TimeLib.h"
 #include "TimeAlarms.h"
 
@@ -79,6 +80,10 @@ bool enable_wifi = false;
 SparkFun_STTS22H tempSensor;
 float ext_temp;
 
+//Sensirion Sen5X
+SensirionI2CSen5x sen5x;
+
+
 // WiFi
 const char* ssid = "ESP32_Test";
 const char* password = "United625";
@@ -109,9 +114,13 @@ void updateNotecard();           // Updates the notecard
 void doNotecard();               // Runs notecard update tasks
 time_t getCurrentTimeFromNote(); // Updates the system time from the cellular time
 void sendCurrentSettingsNote();  // Sends a note with the current settings to the cloud
+void sendControllerNote();
+void sendSen5XNote();
 
 void setupTemp();   // Sets up the temp sensor
 void getTempData(); // Gets the current temp data from the optional sensor
+
+void setupSen5X();  //Sets up the Sen5x air quality sensor
 
 void setupWiFi(); // Sets up wifi
 void doWiFi();    // Runs an ad-hoc web page for status info
@@ -173,6 +182,9 @@ void setup()
   }
   if (enable_renogy) {
     setupController();
+  }
+  if (enable_sen5x) {
+    setupSen5X();
   }
   if (enable_wifi) {
     setupWiFi();
@@ -297,111 +309,167 @@ void updateNotecard()
   notecard.sendRequest(req);
 }
 
+void sendControllerNote() {
+  // update the time string
+    sprintf(time_string, "%02d:%02d:%02d", hour(), minute(), second());
+
+  // Build the controller.qo note
+  J* req = notecard.newRequest("note.add");
+  if (req != NULL) {
+    JAddStringToObject(req, "file", "controller.qo");
+    // JAddBoolToObject(req2, "sync", true);
+    J* body = JAddObjectToObject(req, "body");
+    if (body) {
+      J* battery = JAddObjectToObject(body, "battery");
+      if (battery) {
+        JAddNumberToObject(battery, "StateOfCharge", battery_state.stateOfCharge);
+        JAddNumberToObject(battery, "BatteryVoltage", roundf(battery_state.batteryVoltage * 10) / 10);
+        JAddNumberToObject(battery, "BatteryTemperature", battery_state.batteryTemperature);
+        JAddNumberToObject(battery, "ChargingCurrent", roundf(battery_state.chargingCurrent * 10) / 10);
+      }
+      J* panel = JAddObjectToObject(body, "panel");
+      if (panel) {
+        JAddNumberToObject(panel, "PanelVoltage", roundf(panel_state.voltage * 10) / 10);
+        JAddNumberToObject(panel, "PanelCurrent", roundf(panel_state.current * 10) / 10);
+        JAddNumberToObject(panel, "PanelPower", panel_state.chargingPower);
+      }
+      J* controller = JAddObjectToObject(body, "controller");
+      if (controller) {
+        JAddStringToObject(controller, "Controller_Time", time_string);
+        JAddNumberToObject(controller, "OSMTemperature", roundf(ext_temp * 10) / 10);
+        JAddNumberToObject(controller, "RoverTemperature", battery_state.controllerTemperature);
+      }
+      J* load = JAddObjectToObject(body, "load");
+      if (load) {
+        JAddBoolToObject(load, "LoadState", load_state.active);
+        JAddNumberToObject(load, "LoadVoltage", roundf(load_state.voltage * 10) / 10);
+        JAddNumberToObject(load, "LoadCurrent", roundf(load_state.current * 10) / 10);
+        JAddNumberToObject(load, "LoadPower", load_state.power);
+      }
+      J* statistics = JAddObjectToObject(body, "statistics");
+      if (statistics) {
+        JAddNumberToObject(statistics, "OperatingDays", controller_statistics.operatingDays);
+        JAddNumberToObject(statistics, "OverDischarges", controller_statistics.batOverDischarges);
+        JAddNumberToObject(statistics, "FullCharges", controller_statistics.batFullCharges);
+        JAddNumberToObject(statistics, "ChargingAH", controller_statistics.batChargingAmpHours);
+        JAddNumberToObject(statistics, "DischargingAH", controller_statistics.batDischargingAmpHours);
+        JAddNumberToObject(statistics, "PowerGenerated", roundf(controller_statistics.powerGenerated * 10) / 10);
+        JAddNumberToObject(statistics, "PowerConsumed", roundf(controller_statistics.powerConsumed * 10) / 10);
+      }
+      J* day = JAddObjectToObject(body, "dayStatistics");
+      if (day) {
+        JAddNumberToObject(day, "BattVoltageMin",
+          day_statistics.batteryVoltageMinForDay);
+        JAddNumberToObject(day, "BattVoltageMax",
+          day_statistics.batteryVoltageMaxForDay);
+        JAddNumberToObject(day, "MaxChargeCurrent",
+          day_statistics.maxChargeCurrentForDay);
+        JAddNumberToObject(day, "MaxChargePower",
+          day_statistics.maxChargePowerForDay);
+        JAddNumberToObject(day, "MaxDischargeCurrent",
+          day_statistics.maxDischargeCurrentForDay);
+        JAddNumberToObject(day, "MaxDischargePower",
+          day_statistics.maxDischargePowerForDay);
+        JAddNumberToObject(day, "chargingAH_day",
+          day_statistics.chargingAmpHoursForDay);
+        JAddNumberToObject(day, "DischargingAH_day",
+          day_statistics.dischargingAmpHoursForDay);
+        JAddNumberToObject(day, "PowerGenerated_day",
+          day_statistics.powerGenerationForDay);
+        JAddNumberToObject(day, "PowerConsumed_day",
+          day_statistics.powerConsumptionForDay);
+      }
+    }
+    notecard.sendRequest(req);
+  }
+}
+
+void sendSen5XNote() {
+  uint16_t error;
+  char errorMessage[256];
+  unsigned long current_millis = millis();
+  // update the time string
+  sprintf(time_string, "%02d:%02d:%02d", hour(), minute(), second());
+
+  //Set these to nonsense value to be easy to debug
+  float massConcentrationPm1p0 = 555;
+  float massConcentrationPm2p5 = 555;
+  float massConcentrationPm4p0 = 555;
+  float massConcentrationPm10p0 = 555;
+  float ambientHumidity = 555;
+  float ambientTemperature = 555;
+  float vocIndex = 555;
+  float noxIndex = 555;
+
+  // Read Measurement
+  error = sen5x.readMeasuredValues(
+    massConcentrationPm1p0, massConcentrationPm2p5, massConcentrationPm4p0,
+    massConcentrationPm10p0, ambientHumidity, ambientTemperature, vocIndex,
+    noxIndex);
+
+  if (error) {
+    Serial.print("Error trying to execute readMeasuredValues(): ");
+    errorToString(error, errorMessage, 256);
+    Serial.println(errorMessage);
+  }
+  else {
+    //Convert to mg/m3
+    massConcentrationPm1p0 = massConcentrationPm1p0 * 1000;
+    massConcentrationPm2p5 = massConcentrationPm2p5 * 1000;
+    massConcentrationPm4p0 = massConcentrationPm4p0 * 1000;
+    massConcentrationPm10p0 = massConcentrationPm10p0 * 1000;
+  }
+
+  // Build the controller.qo note
+  J* req = notecard.newRequest("note.add");
+  if (req != NULL) {
+    JAddStringToObject(req, "file", "Sen5x.qo");
+    // JAddBoolToObject(req2, "sync", true);
+    J* body = JAddObjectToObject(req, "body");
+    if (body) {
+      JAddStringToObject(body, "SensorTime", time_string);
+      JAddNumberToObject(body, "PM1.0", massConcentrationPm1p0);
+      JAddNumberToObject(body, "PM2.5", massConcentrationPm2p5);
+      JAddNumberToObject(body, "PM4", massConcentrationPm4p0);
+      JAddNumberToObject(body, "PM10", massConcentrationPm10p0);
+      JAddNumberToObject(body, "Humidity", ambientHumidity);
+      JAddNumberToObject(body, "Temperature", ambientTemperature);
+      JAddNumberToObject(body, "VOCIndex", vocIndex);
+      JAddNumberToObject(body, "NOxIndex", noxIndex);
+
+    }
+    notecard.sendRequest(req);
+  }
+
+
+}
+
 // Runs notecard update tasks
 void doNotecard()
 {
   current_time = millis();
-  char power_state_string[4];
-  char power_mode_string[10];
 
   if (current_time > previous_data_time + (logging_interval * 60000)) {
-    // Gather data from the controller to send
-    getCurrentControllerData();
-
-    // Send data to notecard
-    // Sensor data
-    /*J *req = notecard.newRequest("note.add");
-    if (req != NULL) {
-      JAddStringToObject(req, "file", "sensors.qo");
-      JAddBoolToObject(req, "sync", true);
-      J *body = JAddObjectToObject(req, "body");
-      if (body) {
-        JAddNumberToObject(body, "temp", temp);
-      }
-      notecard.sendRequest(req);
+    // Gather data from the enabled devices, send the appropriate note
+    if (enable_renogy) {
+      getCurrentControllerData();
+      sendControllerNote();
     }
-    */
+    if (enable_sen5x) {
+      sendSen5XNote();
+    }
 
     // Controller Data
-    // update the time string
-    sprintf(time_string, "%02d:%02d:%02d", hour(), minute(), second());
+    
 
-    // Build the controller.qo note
-    J* req2 = notecard.newRequest("note.add");
-    if (req2 != NULL) {
-      JAddStringToObject(req2, "file", "controller.qo");
-      // JAddBoolToObject(req2, "sync", true);
-      J* body = JAddObjectToObject(req2, "body");
-      if (body) {
-        J* battery = JAddObjectToObject(body, "battery");
-        if (battery) {
-          JAddNumberToObject(battery, "StateOfCharge", battery_state.stateOfCharge);
-          JAddNumberToObject(battery, "BatteryVoltage", roundf(battery_state.batteryVoltage * 10) / 10);
-          JAddNumberToObject(battery, "BatteryTemperature", battery_state.batteryTemperature);
-          JAddNumberToObject(battery, "ChargingCurrent", roundf(battery_state.chargingCurrent * 10) / 10);
-        }
-        J* panel = JAddObjectToObject(body, "panel");
-        if (panel) {
-          JAddNumberToObject(panel, "PanelVoltage", roundf(panel_state.voltage * 10) / 10);
-          JAddNumberToObject(panel, "PanelCurrent", roundf(panel_state.current * 10) / 10);
-          JAddNumberToObject(panel, "PanelPower", panel_state.chargingPower);
-        }
-        J* controller = JAddObjectToObject(body, "controller");
-        if (controller) {
-          JAddStringToObject(controller, "Controller_Time", time_string);
-          JAddNumberToObject(controller, "OSMTemperature", roundf(ext_temp * 10) / 10);
-          JAddNumberToObject(controller, "RoverTemperature", battery_state.controllerTemperature);
-        }
-        J* load = JAddObjectToObject(body, "load");
-        if (load) {
-          JAddBoolToObject(load, "LoadState", load_state.active);
-          JAddNumberToObject(load, "LoadVoltage", roundf(load_state.voltage * 10) / 10);
-          JAddNumberToObject(load, "LoadCurrent", roundf(load_state.current * 10) / 10);
-          JAddNumberToObject(load, "LoadPower", load_state.power);
-        }
-        J* statistics = JAddObjectToObject(body, "statistics");
-        if (statistics) {
-          JAddNumberToObject(statistics, "OperatingDays", controller_statistics.operatingDays);
-          JAddNumberToObject(statistics, "OverDischarges", controller_statistics.batOverDischarges);
-          JAddNumberToObject(statistics, "FullCharges", controller_statistics.batFullCharges);
-          JAddNumberToObject(statistics, "ChargingAH", controller_statistics.batChargingAmpHours);
-          JAddNumberToObject(statistics, "DischargingAH", controller_statistics.batDischargingAmpHours);
-          JAddNumberToObject(statistics, "PowerGenerated", roundf(controller_statistics.powerGenerated * 10) / 10);
-          JAddNumberToObject(statistics, "PowerConsumed", roundf(controller_statistics.powerConsumed * 10) / 10);
-        }
-        J* day = JAddObjectToObject(body, "dayStatistics");
-        if (day) {
-          JAddNumberToObject(day, "BattVoltageMin",
-            day_statistics.batteryVoltageMinForDay);
-          JAddNumberToObject(day, "BattVoltageMax",
-            day_statistics.batteryVoltageMaxForDay);
-          JAddNumberToObject(day, "MaxChargeCurrent",
-            day_statistics.maxChargeCurrentForDay);
-          JAddNumberToObject(day, "MaxChargePower",
-            day_statistics.maxChargePowerForDay);
-          JAddNumberToObject(day, "MaxDischargeCurrent",
-            day_statistics.maxDischargeCurrentForDay);
-          JAddNumberToObject(day, "MaxDischargePower",
-            day_statistics.maxDischargePowerForDay);
-          JAddNumberToObject(day, "chargingAH_day",
-            day_statistics.chargingAmpHoursForDay);
-          JAddNumberToObject(day, "DischargingAH_day",
-            day_statistics.dischargingAmpHoursForDay);
-          JAddNumberToObject(day, "PowerGenerated_day",
-            day_statistics.powerGenerationForDay);
-          JAddNumberToObject(day, "PowerConsumed_day",
-            day_statistics.powerConsumptionForDay);
-        }
-      }
-      notecard.sendRequest(req2);
-    }
+
 
     // receive settings data from notecard
-    J* req3 = notecard.newRequest("note.get");
-    JAddStringToObject(req3, "file", "settingsUpdate.qi");
-    JAddBoolToObject(req3, "delete", true);
+    J* req = notecard.newRequest("note.get");
+    JAddStringToObject(req, "file", "settingsUpdate.qi");
+    JAddBoolToObject(req, "delete", true);
 
-    J* rsp = notecard.requestAndResponse(req3);
+    J* rsp = notecard.requestAndResponse(req);
     if (notecard.responseError(rsp)) {
       notecard.logDebug("No notes available");
       Serial.println("");
@@ -574,6 +642,45 @@ void getTempData()
     tempSensor.getTemperatureF(&ext_temp);
   }
 }
+// ---- Sen5X Air Quality Sensor ---- //
+//Sets up the Sen5x Air quality sensor
+void setupSen5x() {
+  sen5x.begin(Wire);
+
+  uint16_t error;
+  char errorMessage[256];
+  error = sen5x.deviceReset();
+  if (error) {
+    Serial.print("Error trying to execute deviceReset(): ");
+    errorToString(error, errorMessage, 256);
+    Serial.println(errorMessage);
+  }
+
+  // Adjust tempOffset to account for additional temperature offsets
+  // exceeding the SEN module's self heating.
+  float tempOffset = 0.0;
+  error = sen5x.setTemperatureOffsetSimple(tempOffset);
+  if (error) {
+    Serial.print("Error trying to execute setTemperatureOffsetSimple(): ");
+    errorToString(error, errorMessage, 256);
+    Serial.println(errorMessage);
+  }
+  else {
+    Serial.print("Temperature Offset set to ");
+    Serial.print(tempOffset);
+    Serial.println(" deg. Celsius (SEN54/SEN55 only");
+  }
+
+  // Start Measurement
+  error = sen5x.startMeasurement();
+  if (error) {
+    Serial.print("Error trying to execute startMeasurement(): ");
+    errorToString(error, errorMessage, 256);
+    Serial.println(errorMessage);
+  }
+}
+
+
 
 // ---- Output state machine ---- //
 
