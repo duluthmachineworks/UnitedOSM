@@ -43,9 +43,11 @@
 Preferences preferences;
 
 // Notecard
-#define PRODUCT_UID "com.unitedconsulting.clee:UnitedAQM"
+#define PRODUCT_UID "com.unitedconsulting.clee:unitedaqm"
 #define SEND_INTERVAL 15000
 #define SERIAL_NO "Proto_OD"
+#define WIFI_SSID "UnitedConsulting"
+#define WIFI_PASS "United625"
 bool send_time_updates = false;
 Notecard notecard;
 float notecard_temp;
@@ -59,21 +61,20 @@ int firmware_updated_m = 1;
 int firmware_updated_y = 2024;
 
 // Changeable Settings
-int logging_interval = 5; // in minutes
-int outbound_interval = 5;
-int inbound_interval = 5;
+int logging_interval = 1; // in minutes
+int outbound_interval = 1;
+int inbound_interval = 1;
 bool power_on = true;
 bool timer_mode = true;
-// bool wifi_enabled = false;      // default state is off
 int time_on_hour = 7;
 int time_on_min = 30;
 int time_off_hour = 18;
 int time_off_min = 0;
 int time_reset_hour = 1;
 int time_reset_minute = 0;
-bool enable_renogy = true;
+bool enable_renogy = false;
 bool enable_STTS22H = false;
-bool enable_sen5x = false;
+bool enable_sen5x = true;
 bool enable_wifi = false;
 
 // Temp sensor
@@ -115,12 +116,12 @@ void doNotecard();               // Runs notecard update tasks
 time_t getCurrentTimeFromNote(); // Updates the system time from the cellular time
 void sendCurrentSettingsNote();  // Sends a note with the current settings to the cloud
 void sendControllerNote();
-void sendSen5XNote();
+void sendSen5xNote();
 
 void setupTemp();   // Sets up the temp sensor
 void getTempData(); // Gets the current temp data from the optional sensor
 
-void setupSen5X();  //Sets up the Sen5x air quality sensor
+void setupSen5x();  //Sets up the Sen5x air quality sensor
 
 void setupWiFi(); // Sets up wifi
 void doWiFi();    // Runs an ad-hoc web page for status info
@@ -139,7 +140,7 @@ void updateSettings();       // Saves new settings to flash
 void readSettings();         // Reads settings from flash
 void printCurrentSettings(); // Prints the current settings to serial
 void printStartupInfo();
-void checkFirstRun();         //Looks for pre-existing settings in flash
+bool settingsEmpty();         //Looks for pre-existing settings in flash
 
 void resetESP();
 
@@ -149,7 +150,7 @@ void setup()
   delay(2000); // Allow the notecard to boot
   pinMode(LED_BUILTIN, OUTPUT);
   Wire.begin();
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial.println("");
   Serial.println("");
 
@@ -185,7 +186,7 @@ void setup()
     setupController();
   }
   if (enable_sen5x) {
-    setupSen5X();
+    setupSen5x();
   }
   if (enable_wifi) {
     setupWiFi();
@@ -216,7 +217,7 @@ void loop()
   }
 
   // run output state machine
-  evaluateOutputState();
+  //evaluateOutputState();
 
   // reset watchdog timer
   esp_task_wdt_reset();
@@ -272,8 +273,14 @@ void setupNotecard()
   notecard.begin();
   notecard.setDebugOutputStream(Serial);
 
+  //Init wifi
+  J* req = notecard.newRequest("card.wifi");
+  JAddStringToObject(req, "ssid", WIFI_SSID);
+  JAddStringToObject(req, "password", WIFI_PASS);
+  notecard.sendRequest(req);
+
   // Initial hub.set request
-  J* req = notecard.newRequest("hub.set");
+  req = notecard.newRequest("hub.set");
   JAddStringToObject(req, "product", PRODUCT_UID);
   JAddStringToObject(req, "mode", "periodic");
   JAddNumberToObject(req, "outbound", outbound_interval);
@@ -385,7 +392,7 @@ void sendControllerNote() {
   }
 }
 
-void sendSen5XNote() {
+void sendSen5xNote() {
   uint16_t error;
   char errorMessage[256];
   unsigned long current_millis = millis();
@@ -415,10 +422,10 @@ void sendSen5XNote() {
   }
   else {
     //Convert to mg/m3
-    massConcentrationPm1p0 = massConcentrationPm1p0 * 1000;
-    massConcentrationPm2p5 = massConcentrationPm2p5 * 1000;
-    massConcentrationPm4p0 = massConcentrationPm4p0 * 1000;
-    massConcentrationPm10p0 = massConcentrationPm10p0 * 1000;
+    massConcentrationPm1p0 = massConcentrationPm1p0 / 1000;
+    massConcentrationPm2p5 = massConcentrationPm2p5 / 1000;
+    massConcentrationPm4p0 = massConcentrationPm4p0 / 1000;
+    massConcentrationPm10p0 = massConcentrationPm10p0 / 1000;
   }
 
   // Build the controller.qo note
@@ -457,7 +464,7 @@ void doNotecard()
       sendControllerNote();
     }
     if (enable_sen5x) {
-      sendSen5XNote();
+      sendSen5xNote();
     }
 
     // Controller Data
@@ -474,11 +481,9 @@ void doNotecard()
     if (notecard.responseError(rsp)) {
       notecard.logDebug("No notes available");
       Serial.println("");
-      // power_state[0] = '\0';
     }
     else {
       J* body = JGetObject(rsp, "body");
-      //enable_wifi = JGetBool(body, "WifiEnabled");
       power_on = JGetBool(body, "power_on");
       timer_mode = JGetBool(body, "timer_mode");
       time_on_hour = JGetNumber(body, "time_on_hour");
@@ -488,7 +493,6 @@ void doNotecard()
       logging_interval = JGetNumber(body, "logging_interval");
       inbound_interval = JGetNumber(body, "inbound_interval");
       outbound_interval = JGetNumber(body, "outbound_interval");
-      enable_wifi = JGetBool(body, "wifi_enabled");
 
       if (JGetBool(body, "reset_esp_now")) {
         resetESP();
