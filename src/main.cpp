@@ -436,8 +436,8 @@ void sendSen5xNote() {
     J* body = JAddObjectToObject(req, "body");
     if (body) {
       JAddStringToObject(body, "SensorTime", time_string);
-      JAddNumberToObject(body, "PM1.0", massConcentrationPm1p0);
-      JAddNumberToObject(body, "PM2.5", massConcentrationPm2p5);
+      JAddNumberToObject(body, "PM1p0", massConcentrationPm1p0);
+      JAddNumberToObject(body, "PM2p5", massConcentrationPm2p5);
       JAddNumberToObject(body, "PM4", massConcentrationPm4p0);
       JAddNumberToObject(body, "PM10", massConcentrationPm10p0);
       JAddNumberToObject(body, "Humidity", ambientHumidity);
