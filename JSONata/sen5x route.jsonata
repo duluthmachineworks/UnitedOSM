@@ -1,0 +1,11 @@
+[
+    {"key": "SensorTime", "value": body.SensorTime},
+    {"key": "AmbientHumidity", "value": body.Humidity},
+    {"key": "AmbientTemperature", "value": body.Temperature},
+    {"key": "VOCIndex", "value": body.VOCIndex},
+    {"key": "NOxIndex", "value": body.NOxIndex},
+    {"key": "PM1.0", "value": $round(body.PM1.0, 6)},
+    {"key": "PM2.5", "value": $round(body.PM2.5, 6)},
+    {"key": "PM4", "value": $round(body.PM4, 6)},
+    {"key": "PM10", "value": $round(body.PM10, 6)}
+]
