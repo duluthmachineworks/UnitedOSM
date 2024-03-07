@@ -1,7 +1,0 @@
-[
-    {"key": sn & "-SensorTime", "value": body.SensorTime},
-    {"key": sn & "-AmbientHumidity", "value": $round(body.Humidity, 0)},
-    {"key": sn & "-AmbientTemperature", "value": $round(body.Temperature, 1)},
-    {"key": sn & "-VOCIndex", "value": body.VOCIndex},
-    {"key": sn & "-NOxIndex", "value": body.NOxIndex}
-]

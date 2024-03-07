@@ -7,5 +7,12 @@
     {"key": sn & "-PM1p0", "value": $round(body.PM1p0, 6)},
     {"key": sn & "-PM2p5", "value": $round(body.PM2p5, 6)},
     {"key": sn & "-PM4", "value": $round(body.PM4, 6)},
-    {"key": sn & "-PM10", "value": $round(body.PM10, 6)}
+    {"key": sn & "-PM10", "value": $round(body.PM10, 6)},
+    {"key": sn & "-BattVoltage", "value": $round(body.BatteryVoltage/1000, 1)},
+    {"key": sn & "-BattCurrent", "value": $round(body.BatteryCurrent/1000, 1)},
+    {"key": sn & "-BattStateOfCharge", "value": body.BatteryStateOfCharge},
+    {"key": sn & "-BattRemainingCap", "value": body.BatteryRemainingCapacity},
+    {"key": sn & "-BattTemperature", "value": body.BatteryTemperature/10}
+    {"key": sn & "-BattOK", "value": body.BatteryOK}
 ]
+    
