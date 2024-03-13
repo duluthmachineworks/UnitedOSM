@@ -1,0 +1,19 @@
+{
+    "device": device,
+    "SensorTime": body.SensorTime,
+    "AmbientHumidity": $round(body.Humidity, 0),
+    "AmbientTemperature": $round(body.Temperature, 1),
+    "VOCIndex": body.VOCIndex,
+    "NOxIndex": body.NOxIndex,
+    "PM1p0": $round(body.PM1p0*1000, 1),
+    "PM2p5": $round(body.PM2p5*1000, 1),
+    "PM4": $round(body.PM4*1000, 1),
+    "PM10": $round(body.PM10*1000, 1),
+    "BattVoltage": $round(body.BatteryVoltage/1000, 1),
+    "BattCurrent": $round(body.BatteryCurrent/1000, 1),
+    "BattStateOfCharge": body.BatteryStateOfCharge,
+    "BattRemainingCap": body.BatteryRemainingCapacity,
+    "BattTemperature": body.BatteryTemperature/10,
+    "BattOK": body.BatteryOK
+}
+    
