@@ -5,8 +5,8 @@
   "time_on_min": 0,
   "time_off_hour": 18,
   "time_off_min": 0,
-  "logging_interval": 1,
-  "inbound_interval": 1,
-  "outbound_interval": 1,
+  "logging_interval": 10,
+  "inbound_interval": 10,
+  "outbound_interval": 10,
   "reset_esp_now": false
 }
