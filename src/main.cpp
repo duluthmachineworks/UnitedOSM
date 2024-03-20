@@ -30,6 +30,7 @@
 #include <SensirionI2CSen5x.h>
 #include "TimeLib.h"
 #include "TimeAlarms.h"
+#include "ArduinoSMBus.h"
 
  // IO definitions
 #define LED_PIN 13;
@@ -76,6 +77,7 @@ bool enable_renogy = false;
 bool enable_STTS22H = false;
 bool enable_sen5x = true;
 bool enable_wifi = false;
+bool enable_bms = true;
 
 // Temp sensor
 SparkFun_STTS22H tempSensor;
@@ -84,6 +86,8 @@ float ext_temp;
 //Sensirion Sen5X
 SensirionI2CSen5x sen5x;
 
+//Battery State Monitoring
+ArduinoSMBus battery(0x0B);
 
 // WiFi
 const char* ssid = "ESP32_Test";
@@ -117,6 +121,7 @@ time_t getCurrentTimeFromNote(); // Updates the system time from the cellular ti
 void sendCurrentSettingsNote();  // Sends a note with the current settings to the cloud
 void sendControllerNote();
 void sendSen5xNote();
+void sendBMSNote();
 
 void setupTemp();   // Sets up the temp sensor
 void getTempData(); // Gets the current temp data from the optional sensor
@@ -452,6 +457,26 @@ void sendSen5xNote() {
 
 }
 
+//Sends info from the smart battery via notecard
+void sendBMSNote() {
+  // Build the controller.qo note
+  J* req = notecard.newRequest("note.add");
+  if (req != NULL) {
+    JAddStringToObject(req, "file", "BMS.qo");
+    // JAddBoolToObject(req2, "sync", true);
+    J* body = JAddObjectToObject(req, "body");
+    if (body) {
+      JAddNumberToObject(body, "BatteryVoltage", battery.voltage());
+      JAddNumberToObject(body, "BatteryCurrent", battery.averageCurrent());
+      JAddNumberToObject(body, "BatteryTemperature", battery.temperatureC());
+      JAddNumberToObject(body, "BatteryStateOfCharge", battery.relativeStateOfCharge());
+      JAddNumberToObject(body, "BatteryRemainingCapacity", battery.remainingCapacity());
+      JAddBoolToObject(body, "BatteryOK", battery.statusOK());
+    }
+    notecard.sendRequest(req);
+  }
+}
+
 // Runs notecard update tasks
 void doNotecard()
 {
@@ -466,11 +491,9 @@ void doNotecard()
     if (enable_sen5x) {
       sendSen5xNote();
     }
-
-    // Controller Data
-
-
-
+    if (enable_bms) {
+      sendBMSNote();
+    }
 
     // receive settings data from notecard
     J* req = notecard.newRequest("note.get");
