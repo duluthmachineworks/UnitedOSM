@@ -31,6 +31,7 @@
 #include "TimeLib.h"
 #include "TimeAlarms.h"
 #include "ArduinoSMBus.h"
+#include "AppSettings.h"
 
  // IO definitions
 #define LED_PIN 13;
@@ -40,8 +41,8 @@
 // Hardware watchdog timeout
 #define WDT_TIMEOUT 30 // in seconds
 
-// Init flash storage
-Preferences preferences;
+//App Settings
+AppSettings settings;
 
 // Notecard
 #define PRODUCT_UID "com.unitedconsulting.clee:unitedaqm"
@@ -52,32 +53,6 @@ Preferences preferences;
 bool send_time_updates = false;
 Notecard notecard;
 float notecard_temp;
-
-// Firmware_data
-int firmware_version_prim = 0;
-int firmware_version_sec = 5;
-int firmware_version_tert = 5;
-int firmware_updated_d = 31;
-int firmware_updated_m = 1;
-int firmware_updated_y = 2024;
-
-// Changeable Settings
-int logging_interval = 1; // in minutes
-int outbound_interval = 1;
-int inbound_interval = 1;
-bool power_on = true;
-bool timer_mode = true;
-int time_on_hour = 7;
-int time_on_min = 30;
-int time_off_hour = 18;
-int time_off_min = 0;
-int time_reset_hour = 1;
-int time_reset_minute = 0;
-bool enable_renogy = false;
-bool enable_STTS22H = false;
-bool enable_sen5x = true;
-bool enable_wifi = false;
-bool enable_bms = true;
 
 // Temp sensor
 SparkFun_STTS22H tempSensor;
@@ -141,9 +116,7 @@ void turnOffTimer(); // Deletes all timer objects
 
 void evaluateOutputState(); // Evaluates the output state to the load
 
-void updateSettings();       // Saves new settings to flash
-void readSettings();         // Reads settings from flash
-void printCurrentSettings(); // Prints the current settings to serial
+// Prints the current settings to serial
 void printStartupInfo();
 bool settingsEmpty();         //Looks for pre-existing settings in flash
 
@@ -165,13 +138,6 @@ void setup()
     delay(1000); // allow the notecard to get started
   }
 
-  // Update settings from flash if they don't exist
-  if (settingsEmpty()) {
-    updateSettings();
-  }
-  readSettings();
-  printCurrentSettings();
-
   for (int i = 0; i < 5; i++) {
     Serial.print(". ");
     delay(1000); // allow the notecard to get started
@@ -184,16 +150,16 @@ void setup()
 
   // Startup other services
   setupTimer();
-  if (enable_STTS22H) {
+  if (settings.enableSTTS22H()) {
     setupTemp();
   }
-  if (enable_renogy) {
+  if (settings.enableRenogy()) {
     setupController();
   }
-  if (enable_sen5x) {
+  if (settings.enableSen5x()) {
     setupSen5x();
   }
-  if (enable_wifi) {
+  if (settings.enableWifi()) {
     setupWiFi();
   }
 
@@ -208,7 +174,7 @@ void setup()
 void loop()
 {
   // Poll sensors
-  if (enable_STTS22H) {
+  if (settings.enableSTTS22H()) {
     if (tempSensor.dataReady()) {
       tempSensor.getTemperatureC(&ext_temp);
     }
@@ -217,7 +183,7 @@ void loop()
   // do actions
   doNotecard();
 
-  if (enable_wifi) {
+  if (settings.enableWifi()) {
     doWiFi();
   }
 
@@ -243,8 +209,8 @@ void setupTimer()
   Alarm.free(off_timer);
 
   // write new times
-  on_timer = Alarm.alarmRepeat(time_on_hour, time_on_min, 0, powerOn);
-  off_timer = Alarm.alarmRepeat(time_off_hour, time_off_min, 0, powerOff);
+  on_timer = Alarm.alarmRepeat(settings.timeOnHour(), settings.timeOnMin(), 0, powerOn);
+  off_timer = Alarm.alarmRepeat(settings.timeOffHour(), settings.timeOffMin(), 0, powerOff);
 
   Serial.print("Timer set to turn on at ");
   Serial.print(hour(Alarm.read(on_timer)));
@@ -256,7 +222,7 @@ void setupTimer()
   Serial.println(minute(Alarm.read(off_timer)));
 
   // Set up global reset timer
-  reset_timer = Alarm.alarmRepeat(time_reset_hour, time_reset_minute, 0, resetESP);
+  reset_timer = Alarm.alarmRepeat(settings.timeResetHour(), settings.timeResetMinute(), 0, resetESP);
   Serial.print("Reset timer set to ");
   Serial.print(hour(Alarm.read(reset_timer)));
   Serial.print(":");
@@ -288,8 +254,8 @@ void setupNotecard()
   req = notecard.newRequest("hub.set");
   JAddStringToObject(req, "product", PRODUCT_UID);
   JAddStringToObject(req, "mode", "periodic");
-  JAddNumberToObject(req, "outbound", outbound_interval);
-  JAddNumberToObject(req, "inbound", inbound_interval);
+  JAddNumberToObject(req, "outbound", settings.outboundInterval());
+  JAddNumberToObject(req, "inbound", settings.inboundInterval());
   JAddStringToObject(req, "sn", SERIAL_NO);
   notecard.sendRequest(req);
   /*
@@ -317,8 +283,8 @@ void updateNotecard()
 {
   J* req = notecard.newRequest("hub.set");
   JAddStringToObject(req, "mode", "periodic");
-  JAddNumberToObject(req, "outbound", outbound_interval);
-  JAddNumberToObject(req, "inbound", inbound_interval);
+  JAddNumberToObject(req, "outbound", settings.outboundInterval());
+  JAddNumberToObject(req, "inbound", settings.inboundInterval());
   notecard.sendRequest(req);
 }
 
@@ -482,16 +448,16 @@ void doNotecard()
 {
   current_time = millis();
 
-  if (current_time > previous_data_time + (logging_interval * 60000)) {
+  if (current_time > previous_data_time + (settings.loggingInterval() * 60000)) {
     // Gather data from the enabled devices, send the appropriate note
-    if (enable_renogy) {
+    if (settings.enableRenogy()) {
       getCurrentControllerData();
       sendControllerNote();
     }
-    if (enable_sen5x) {
+    if (settings.enableSen5x()) {
       sendSen5xNote();
     }
-    if (enable_bms) {
+    if (settings.enableBms()) {
       sendBMSNote();
     }
 
@@ -506,16 +472,16 @@ void doNotecard()
       Serial.println("");
     }
     else {
+      bool timer_mode;
+      int time_on_hour, time_on_min, time_off_hour, time_off_min, inbound_interval, outbound_interval;
       J* body = JGetObject(rsp, "body");
-      power_on = JGetBool(body, "power_on");
-      timer_mode = JGetBool(body, "timer_mode");
-      time_on_hour = JGetNumber(body, "time_on_hour");
-      time_on_min = JGetNumber(body, "time_on_min");
-      time_off_hour = JGetNumber(body, "time_off_hour");
-      time_off_min = JGetNumber(body, "time_off_min");
-      logging_interval = JGetNumber(body, "logging_interval");
-      inbound_interval = JGetNumber(body, "inbound_interval");
-      outbound_interval = JGetNumber(body, "outbound_interval");
+      settings.setPowerOn(JGetBool(body, "power_on"));
+      settings.setTimerMode(JGetBool(body, "timer_mode"));
+      settings.setTimeOn(JGetNumber(body, "time_on_hour"), JGetNumber(body, "time_on_min"));
+      settings.setTimeOff(JGetNumber(body, "time_off_hour"), JGetNumber(body, "time_off_min"));
+      settings.setLoggingInterval(JGetNumber(body, "logging_interval"));
+      settings.setInboundInterval(JGetNumber(body, "inbound_interval"));
+      settings.setOutboundInterval(JGetNumber(body, "outbound_interval"));
 
       if (JGetBool(body, "reset_esp_now")) {
         resetESP();
@@ -527,12 +493,10 @@ void doNotecard()
       else {
         turnOffTimer();
       }
-      updateSettings();
-      readSettings();
       updateNotecard();
 
       Serial.println("Settings updated. Current settings: ");
-      printCurrentSettings();
+      settings.printCurrentSettings();
       sendCurrentSettingsNote();
     }
     notecard.deleteResponse(rsp);
@@ -548,16 +512,9 @@ void doNotecard()
 
 void sendCurrentSettingsNote()
 {
-  readSettings();
-
+  
   // update the time string
   sprintf(time_string, "%02d:%02d:%02d", hour(), minute(), second());
-
-  // build firmware versioning strings
-  char firmware_version[10];
-  char firmware_date[16];
-  sprintf(firmware_version, "%01d.%01d.%01d", firmware_version_prim, firmware_version_sec, firmware_version_tert);
-  sprintf(firmware_date, "rev.%02d/%02d/%02d", firmware_updated_d, firmware_updated_m, firmware_updated_y);
 
   // Read the actual timer settings for the note, don't assume
   char timer_on_string[10];
@@ -571,21 +528,19 @@ void sendCurrentSettingsNote()
     JAddStringToObject(req4, "file", "settings.qo");
     J* body = JAddObjectToObject(req4, "body");
     if (body) {
-      JAddStringToObject(body, "firmware_version", firmware_version);
-      JAddStringToObject(body, "firmware_date", firmware_date);
+      JAddStringToObject(body, "firmware_version", settings.firmwareVersionString());
+      JAddStringToObject(body, "firmware_date", settings.firmwareDateString());
       JAddStringToObject(body, "controller_time", time_string);
-      JAddBoolToObject(body, "power_on", power_on);
-      JAddBoolToObject(body, "timer_mode", timer_mode);
-      JAddBoolToObject(body, "wifi_enabled", enable_wifi);
-      JAddNumberToObject(body, "time_on_hour", time_on_hour);
-      JAddNumberToObject(body, "time_on_minute", time_on_min);
-      JAddNumberToObject(body, "time_off_hour", time_off_hour);
-      JAddNumberToObject(body, "time_off_minute", time_off_min);
+      JAddBoolToObject(body, "power_on", settings.powerOn());
+      JAddBoolToObject(body, "timer_mode", settings.timerMode());
+      JAddStringToObject(body, "set_time_on", settings.timeOnString());
+      JAddStringToObject(body, "set_time_off", settings.timeOffString());
       JAddStringToObject(body, "timer_on", timer_on_string);
       JAddStringToObject(body, "timer_off", timer_off_string);
-      JAddNumberToObject(body, "logging_interval", logging_interval);
-      JAddNumberToObject(body, "outbound_interval", outbound_interval);
-      JAddNumberToObject(body, "inbound_interval", inbound_interval);
+      JAddNumberToObject(body, "logging_interval", settings.loggingInterval());
+      JAddNumberToObject(body, "outbound_interval", settings.outboundInterval());
+      JAddNumberToObject(body, "inbound_interval", settings.inboundInterval());
+      JAddBoolToObject(body, "wifi_enabled", settings.enableWifi());
     }
     notecard.sendRequest(req4);
   }
@@ -716,7 +671,7 @@ void setupSen5x() {
 void evaluateOutputState()
 {
   // Evaluate outputs based on state register
-  switch (power_on) {
+  switch (settings.powerOn()) {
   case true:
     if (!load_state.active) {
       powerOn();
@@ -733,7 +688,7 @@ void evaluateOutputState()
 // Turns the load on
 void powerOn()
 {
-  power_on = true;
+  settings.setPowerOn(true);
   Serial.println("Power turned on.");
   digitalWrite(LED_BUILTIN, HIGH);
   if (!load_state.active) {
@@ -745,7 +700,7 @@ void powerOn()
 // Turns the load off
 void powerOff()
 {
-  power_on = false;
+  settings.setPowerOn(false);
   Serial.println("Power turned off");
   digitalWrite(LED_BUILTIN, LOW);
   if (load_state.active) {
@@ -869,9 +824,9 @@ void doWiFi()
 
             client.println("<h3>Command States:</h3> <ul>");
             client.println("<li>Power State: ");
-            client.println(power_on);
+            client.println(settings.powerOn());
             client.println("</li> <li>Power Mode: ");
-            client.println(timer_mode);
+            client.println(settings.timerMode());
             client.println("</li></ul>");
 
             client.println("<h3>Controller</h3> <ul>");
@@ -905,101 +860,7 @@ void doWiFi()
   }
 }
 
-bool settingsEmpty()
-{
-  preferences.begin("app_settings", false);
 
-  if (preferences.isKey("power_on")) {
-    return false;
-  }
-  else {
-    return true;
-  }
-}
-
-// Updates the settings saved to flash
-void updateSettings()
-{
-  preferences.begin("app_settings", false);
-
-  preferences.putBool("power_on", power_on);
-  preferences.putBool("timer_mode", timer_mode);
-  preferences.putBool("wifi_enabled", enable_wifi);
-  preferences.putInt("time_on_hour", time_on_hour);
-  preferences.putInt("time_on_minute", time_on_min);
-  preferences.putInt("time_off_hour", time_off_hour);
-  preferences.putInt("time_off_minute", time_off_min);
-  preferences.putInt("logging_int", logging_interval);
-  preferences.putInt("outbound_int", outbound_interval);
-  preferences.putInt("inbound_int", inbound_interval);
-
-  preferences.end();
-
-  Serial.println("Settings written to flash");
-}
-
-void readSettings()
-{
-  preferences.begin("app_settings", false);
-
-  power_on = preferences.getBool("power_on");
-  timer_mode = preferences.getBool("timer_mode");
-  enable_wifi = preferences.getBool("wifi_enabled");
-  time_on_hour = preferences.getInt("time_on_hour");
-  time_on_min = preferences.getInt("time_on_minute");
-  time_off_hour = preferences.getInt("time_off_hour");
-  time_off_min = preferences.getInt("time_off_minute");
-  logging_interval = preferences.getInt("logging_int");
-  outbound_interval = preferences.getInt("outbound_int");
-  inbound_interval = preferences.getInt("inbound_int");
-
-  preferences.end();
-
-  Serial.println("Settings read from flash");
-}
-
-// Prints the current settings to serial
-void printCurrentSettings()
-{
-  // build firmware versioning strings
-  char firmware_version[10];
-  char firmware_date[16];
-  sprintf(firmware_version, "%01d.%01d.%01d", firmware_version_prim, firmware_version_sec, firmware_version_tert);
-  sprintf(firmware_date, "rev.%02d/%02d/%02d", firmware_updated_d, firmware_updated_m, firmware_updated_y);
-
-  // Read the actual timer settings for the note, don't assume
-  char timer_on_string[10];
-  char timer_off_string[10];
-  sprintf(timer_on_string, "%02d:%02d", hour(Alarm.read(on_timer)), minute(Alarm.read(on_timer)));
-  sprintf(timer_off_string, "%02d:%02d", hour(Alarm.read(off_timer)), minute(Alarm.read(off_timer)));
-
-  Serial.print("Firmware version: ");
-  Serial.println(firmware_version);
-  Serial.print("Firmware date: ");
-  Serial.println(firmware_date);
-  Serial.print("Power State: ");
-  Serial.println(power_on);
-  Serial.print("Timer Mode: ");
-  Serial.println(timer_mode);
-  Serial.print("Time on: ");
-  Serial.print(time_on_hour);
-  Serial.print(":");
-  Serial.println(time_on_min);
-  Serial.print("Time off: ");
-  Serial.print(time_off_hour);
-  Serial.print(":");
-  Serial.println(time_off_min);
-  Serial.print("Timer on time: ");
-  Serial.println(timer_on_string);
-  Serial.print("Timer off time: ");
-  Serial.println(timer_off_string);
-  Serial.print("Logging interval: ");
-  Serial.println(logging_interval);
-  Serial.print("Inbound interval: ");
-  Serial.println(inbound_interval);
-  Serial.print("Outbound interval: ");
-  Serial.println(outbound_interval);
-}
 
 // ---- System Functions ---- //
 void resetESP()
@@ -1011,21 +872,14 @@ void resetESP()
 void printStartupInfo()
 {
   Serial.print("UnitedOSM Version ");
-  Serial.print(firmware_version_prim);
-  Serial.print(".");
-  Serial.print(firmware_version_sec);
-  Serial.print(".");
-  Serial.println(firmware_version_tert);
-
+  Serial.print(settings.firmwareVersionString());
   Serial.print("Updated on ");
-  Serial.print(firmware_updated_m);
-  Serial.print("/");
-  Serial.print(firmware_updated_d);
-  Serial.print("/");
-  Serial.println(firmware_updated_d);
+  Serial.print(settings.firmwareDateString());
   Serial.println();
 
   Serial.println("Copyright (C) 2024 Christopher E. Lee clee@unitedconsulting.com");
   Serial.println("License: GPL-3.0-only");
   Serial.println("This program is distributed WITHOUT ANY WARRANTY or FITNESS FOR A PARTICULAR PURPOSE.");
+
+  settings.printCurrentSettings();
 }
